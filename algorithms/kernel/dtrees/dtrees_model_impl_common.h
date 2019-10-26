@@ -25,6 +25,7 @@
 #define __DTREES_MODEL_IMPL_COMMON__
 
 #include "dtrees_model_impl.h"
+#include <iostream>
 
 namespace daal
 {
@@ -59,6 +60,7 @@ void nodeToTable(const NodeBase& node, size_t iRow, size_t& iCur, DecisionTreeNo
     }
     else
     {
+        //std::cout << "Prob Vals Cycle" << std::endl;
         const typename NodeType::Leaf& l = *NodeType::castLeaf(&node);
         if (nClasses > 1)
         {
@@ -81,6 +83,7 @@ void TreeImpl<TNodeType, TAllocator>::convertToTable(DecisionTreeTable *treeTabl
     double *impVals       = impurities->getArray();
     int *nNodeSamplesVals = nNodeSamples->getArray();
     double *probVals      = prob->getArray();
+
     if(nNode)
     {
         DecisionTreeNode* aNode = (DecisionTreeNode*)treeTable->getArray();

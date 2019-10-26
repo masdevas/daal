@@ -30,6 +30,7 @@
 #include "df_classification_model_impl.h"
 #include "dtrees_predict_dense_default_impl.i"
 #include "df_classification_training_types_result.h"
+#include <iostream>
 
 #define OOBClassificationData size_t
 
@@ -837,6 +838,7 @@ services::Status ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::c
     Result& res,
     const decision_forest::classification::training::Parameter& par)
 {
+    std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute START *********" << std::endl;
     ResultData rd(par, res.get(variableImportance).get(), res.get(outOfBagError).get(), res.get(outOfBagErrorPerObservation).get());
     services::Status s = computeImpl<algorithmFPType, cpu,
         daal::algorithms::decision_forest::classification::internal::ModelImpl,
@@ -844,6 +846,7 @@ services::Status ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::c
         (pHostApp, x, y, *static_cast<daal::algorithms::decision_forest::classification::internal::ModelImpl*>(&m),
         rd, par, par.nClasses);
     if(s.ok()) res.impl()->setEngine(rd.updatedEngine);
+    std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute END *********" << std::endl;
     return s;
 }
 

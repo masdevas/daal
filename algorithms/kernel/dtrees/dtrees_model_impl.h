@@ -134,10 +134,12 @@ struct TreeNodeLeaf: public TreeNodeBase
     TResponseType response;
     double* hist;
 
+    TreeNodeLeaf() {}
+
     // nCLasses = 0 for regression
     TreeNodeLeaf(size_t nClasses)
     {
-        hist = (double*) services::daal_malloc(nClasses*sizeof(double), 64);
+        hist = (double*) daal::threaded_scalable_malloc(nClasses*sizeof(double), 64);
     }
 
     virtual ~TreeNodeLeaf()
@@ -221,6 +223,7 @@ public:
      ChunkAllocator(size_t nNodesInChunk, size_t nClasses = 0) :
         _man(nNodesInChunk*(sizeof(typename NodeType::Leaf) + sizeof(typename NodeType::Split))){}
     typename NodeType::Leaf* allocLeaf(size_t nClasses);
+    typename NodeType::Leaf* allocLeaf();
     typename NodeType::Split* allocSplit();
     void free(typename NodeType::Base* n);
     void reset() { _man.reset(); }
@@ -233,6 +236,12 @@ template <typename NodeType>
 typename NodeType::Leaf* ChunkAllocator<NodeType>::allocLeaf(size_t nClasses)
 {
     return new (_man.alloc(sizeof(typename NodeType::Leaf))) typename NodeType::Leaf(nClasses);
+}
+
+template <typename NodeType>
+typename NodeType::Leaf* ChunkAllocator<NodeType>::allocLeaf()
+{
+    return new (_man.alloc(sizeof(typename NodeType::Leaf))) typename NodeType::Leaf();
 }
 
 template <typename NodeType>

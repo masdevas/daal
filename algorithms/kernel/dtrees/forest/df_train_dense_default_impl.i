@@ -31,6 +31,7 @@
 #include "engine_types_internal.h"
 #include "service_defines.h"
 #include "uniform_kernel.h"
+#include <iostream>
 
 using namespace daal::algorithms::dtrees::training::internal;
 
@@ -250,10 +251,12 @@ template <typename algorithmFPType, CpuType cpu, typename ModelType, typename Ta
 services::Status computeImpl(HostAppIface* pHostApp, const NumericTable *x, const NumericTable *y,
     ModelType& md, ResultData& res, const Parameter& par, size_t nClasses)
 {
+    //std::cout << "Compute IMPL" << std::endl;
     DAAL_CHECK(md.resize(par.nTrees), ErrorMemoryAllocationFailed);
     dtrees::internal::FeatureTypes featTypes;
+    //std::cout << "featFypes Start" << std::endl;
     DAAL_CHECK(featTypes.init(*x), ErrorMemoryAllocationFailed);
-
+    //std::cout << "featFypes End" << std::endl;
     dtrees::internal::IndexedFeatures indexedFeatures;
     services::Status s;
     if(!par.memorySavingMode)
@@ -318,7 +321,9 @@ services::Status computeImpl(HostAppIface* pHostApp, const NumericTable *x, cons
         services::Status s = task->run(engineImpl, pTree, numElems[i]);
         if(pTree)
         {
+            //std::cout << "Add starts" << std::endl;
             md.add((typename ModelType::TreeType&)*pTree, nClasses);
+            //std::cout << "Add finished" << std::endl;
             //md.add((typename ModelType::TreeType&)*pTree);
         }
         DAAL_CHECK_STATUS_THR(s);

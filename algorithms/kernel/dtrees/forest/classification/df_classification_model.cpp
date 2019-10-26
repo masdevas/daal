@@ -238,9 +238,22 @@ bool ModelImpl::add(const TreeType& tree, size_t nClasses)
     DAAL_CHECK_STATUS_VAR(impTbl)
     DAAL_CHECK_STATUS_VAR(nodeSamplesTbl)
     DAAL_CHECK_STATUS_VAR(probTbl)
+    auto prob = probTbl;
+    double *probVals      = prob->getArray();
+
 
     tree.convertToTable(pTbl, impTbl, nodeSamplesTbl, probTbl, nClasses);
-
+    // std::cout << "@@@@@ @@@@@ @@@@@ @@@@@ @@@@@" << std::endl;
+    // std::cout << "nClasses: " << nClasses << ", nRows: " << prob->getNumberOfRows() << ", nCols: " << prob->getNumberOfColumns() << std::endl;
+    // for (size_t indexRow = 0; indexRow < prob->getNumberOfRows(); ++indexRow)
+    // {
+    //     for (size_t indexColumn = 0; indexColumn < prob->getNumberOfColumns(); ++indexColumn)
+    //     {
+    //         std::cout << probVals[indexRow * prob->getNumberOfColumns() + indexColumn] << ' ';
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // std::cout << "##### ##### ##### ##### #####" << std::endl;
     (*_serializationData)[i - 1].reset(pTbl);
     (*_impurityTables)[i - 1].reset(impTbl);
     (*_nNodeSampleTables)[i - 1].reset(nodeSamplesTbl);

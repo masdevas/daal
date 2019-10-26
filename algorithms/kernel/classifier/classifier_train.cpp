@@ -47,7 +47,7 @@ services::Status Parameter::check() const
 }
 namespace interface2
 {
-Parameter::Parameter(size_t nClasses) : nClasses(nClasses), resultsToEvaluate(computeClassLabels) {}
+Parameter::Parameter(size_t nClasses) : nClasses(nClasses), resultsToEvaluate(computeClassLabels | computeClassProbabilities) {}
 
 services::Status Parameter::check() const
 {

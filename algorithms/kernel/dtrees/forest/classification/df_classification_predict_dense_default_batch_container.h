@@ -26,6 +26,7 @@
 #include "decision_forest_classification_predict.h"
 #include "df_classification_predict_dense_default_batch.h"
 #include "service_algo_utils.h"
+#include <iostream>
 
 namespace daal
 {
@@ -88,14 +89,15 @@ BatchContainer<algorithmFPType, method, cpu>::~BatchContainer()
 template <typename algorithmFPType, Method method, CpuType cpu>
 services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
 {
+    //std::cout << "Inside compute2" << std::endl;
     Input *input = static_cast<Input *>(_in);
     classifier::prediction::Result *result = static_cast<classifier::prediction::Result *>(_res);
     const classifier::Parameter *par = static_cast<classifier::Parameter*>(_par);
     decision_forest::classification::Model *m = static_cast<decision_forest::classification::Model *>(input->get(classifier::prediction::model).get());
 
     NumericTable *a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
-    NumericTable *r = ((par->resultsToEvaluate & classifier::ResultToComputeId::evaluateClassesLabels) ? result->get(classifier::prediction::prediction).get() : nullptr);
-    NumericTable *prob = ((par->resultsToEvaluate & classifier::ResultToComputeId::evaluateClassesProbabilities) ? result->get(classifier::prediction::probabilities).get() : nullptr);
+    NumericTable *r = ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassLabels) ? result->get(classifier::prediction::prediction).get() : nullptr);
+    NumericTable *prob = ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassProbabilities) ? result->get(classifier::prediction::probabilities).get() : nullptr);
 
     daal::services::Environment::env &env = *_env;
 

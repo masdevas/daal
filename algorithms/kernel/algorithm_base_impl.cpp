@@ -28,6 +28,7 @@
 
 #include "service_thread_pinner.h"
 #include "service_topo.h"
+#include <iostream>
 
 namespace daal
 {
@@ -193,6 +194,7 @@ services::Status AlgorithmImpl<mode>::computeNoThrow()
     }
 
     s = setupCompute();
+    std::cout << "ALG BASE MODE IMPL START" << std::endl;
     if(s)
     {
 #if !(defined DAAL_THREAD_PINNING_DISABLED)
@@ -210,6 +212,7 @@ services::Status AlgorithmImpl<mode>::computeNoThrow()
             s =  this->_ac->compute();
         }
     }
+    std::cout << "ALG BASE MODE IMPL END" << std::endl;
 
     s |= resetCompute();
     return s;
@@ -255,6 +258,7 @@ services::Status AlgorithmImpl<batch>::computeNoThrow()
     }
 
     s = setupCompute();
+
     if(s)
     {
 #if !(defined DAAL_THREAD_PINNING_DISABLED)
@@ -269,9 +273,12 @@ services::Status AlgorithmImpl<batch>::computeNoThrow()
         else
 #endif
         {
+            std::cout << "ALG BASE MODE IMPL START BATCH" << std::endl;
             s |=  this->_ac->compute();
+            std::cout << "ALG BASE MODE IMPL END BATCH" << std::endl;
         }
     }
+
 
     if(resetFlag)
         s |= resetCompute();

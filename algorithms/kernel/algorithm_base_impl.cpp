@@ -273,9 +273,7 @@ services::Status AlgorithmImpl<batch>::computeNoThrow()
         else
 #endif
         {
-            std::cout << "ALG BASE MODE IMPL START BATCH" << std::endl;
             s |=  this->_ac->compute();
-            std::cout << "ALG BASE MODE IMPL END BATCH" << std::endl;
         }
     }
 

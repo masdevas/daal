@@ -838,7 +838,7 @@ services::Status ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::c
     Result& res,
     const decision_forest::classification::training::Parameter& par)
 {
-    std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute START *********" << std::endl;
+    //std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute START *********" << std::endl;
     ResultData rd(par, res.get(variableImportance).get(), res.get(outOfBagError).get(), res.get(outOfBagErrorPerObservation).get());
     services::Status s = computeImpl<algorithmFPType, cpu,
         daal::algorithms::decision_forest::classification::internal::ModelImpl,
@@ -846,7 +846,7 @@ services::Status ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::c
         (pHostApp, x, y, *static_cast<daal::algorithms::decision_forest::classification::internal::ModelImpl*>(&m),
         rd, par, par.nClasses);
     if(s.ok()) res.impl()->setEngine(rd.updatedEngine);
-    std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute END *********" << std::endl;
+    //std::cout << "******* ClassificationTrainBatchKernel<algorithmFPType, method, cpu>::compute END *********" << std::endl;
     return s;
 }
 

@@ -39,7 +39,7 @@ FeatureTypes::~FeatureTypes()
 
 bool FeatureTypes::init(const NumericTable& data)
 {
-    std::cout << "FeatureTypes Init start" << std::endl;
+    //std::cout << "FeatureTypes Init start" << std::endl;
     size_t count = 0;
     _firstUnordered = -1;
     _lastUnordered = -1;
@@ -54,7 +54,7 @@ bool FeatureTypes::init(const NumericTable& data)
         _lastUnordered = i;
         ++count;
     }
-    std::cout << "_nNoOrderedFeat " << _nNoOrderedFeat << std::endl;
+    //std::cout << "_nNoOrderedFeat " << _nNoOrderedFeat << std::endl;
     _bAllUnordered = ((_nNoOrderedFeat == count) && count);
     if(_bAllUnordered)
     {

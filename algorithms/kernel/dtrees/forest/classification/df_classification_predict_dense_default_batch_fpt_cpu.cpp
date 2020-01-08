@@ -39,6 +39,10 @@ namespace interface2
 {
 template class BatchContainer<DAAL_FPTYPE, defaultDense, DAAL_CPU>;
 }
+namespace interface3
+{
+template class BatchContainer<DAAL_FPTYPE, defaultDense, DAAL_CPU>;
+}
 namespace internal
 {
 template class PredictKernel<DAAL_FPTYPE, defaultDense, DAAL_CPU>;

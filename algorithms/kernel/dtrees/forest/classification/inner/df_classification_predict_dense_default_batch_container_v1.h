@@ -65,8 +65,10 @@ services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
     const classifier::interface1::Parameter * par = static_cast<classifier::interface1::Parameter *>(_par);
     daal::services::Environment::env & env        = *_env;
 
+    const VotingMethod defaultVotingMethod = VotingMethod::nonWeighted;
+
     __DAAL_CALL_KERNEL(env, internal::PredictKernel, __DAAL_KERNEL_ARGUMENTS(algorithmFPType, method), compute,
-                       daal::services::internal::hostApp(*input), a, m, r, nullptr, par->nClasses);
+                       daal::services::internal::hostApp(*input), a, m, r, nullptr, par->nClasses, defaultVotingMethod);
 }
 } // namespace interface1
 } // namespace prediction

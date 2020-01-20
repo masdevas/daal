@@ -80,7 +80,7 @@ const data_management::DataCollectionPtr & algorithms::Argument::getStorage(cons
     return a._storage;
 }
 
-services::SharedPtr<Base> internal::ArgumentStorage::getExtension(Extension type)
+services::SharedPtr<Base> internal::ArgumentStorage::getExtension(Extension type) const
 {
     services::SharedPtr<Base> ptr;
     if (int(type) < _extensions.size()) ptr = _extensions[type];
@@ -105,7 +105,7 @@ namespace services
 {
 namespace internal
 {
-services::HostAppIfacePtr getHostApp(algorithms::internal::ArgumentStorage & s)
+services::HostAppIfacePtr getHostApp(const algorithms::internal::ArgumentStorage & s)
 {
     auto ext = s.getExtension(algorithms::internal::ArgumentStorage::hostApp);
     DAAL_ASSERT(!ext.get() || dynamic_cast<services::HostAppIface *>(ext.get()));
@@ -120,16 +120,21 @@ public:
     {
         return dynamic_cast<daal::algorithms::internal::ArgumentStorage *>(getStorage(inp).get());
     }
+
+    static const daal::algorithms::internal::ArgumentStorage * get(const daal::algorithms::Input & inp)
+    {
+        return dynamic_cast<const daal::algorithms::internal::ArgumentStorage *>(getStorage(inp).get());
+    }
 };
 
-services::HostAppIfacePtr getHostApp(daal::algorithms::Input & inp)
+services::HostAppIfacePtr getHostApp(const daal::algorithms::Input & inp)
 {
     auto storage = StorageAccessor::get(inp);
     if (storage) return internal::getHostApp(*storage);
     return services::HostAppIfacePtr();
 }
 
-services::HostAppIface * hostApp(daal::algorithms::Input & inp)
+services::HostAppIface * hostApp(const daal::algorithms::Input & inp)
 {
     auto storage = StorageAccessor::get(inp);
     return storage ? getHostApp(*storage).get() : nullptr;

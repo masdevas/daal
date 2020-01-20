@@ -54,8 +54,8 @@ namespace prediction
 enum VotingMethod
 {
     weighted = 0,
-    nonWeighted,
-    lastResultId = nonWeighted
+    unweighted,
+    lastResultId = unweighted
 };
 /**
  * \brief Contains version 1.0 of the Intel(R) Data Analytics Acceleration Library (Intel(R) DAAL) interface.
@@ -126,7 +126,7 @@ struct DAAL_EXPORT Parameter : public daal::algorithms::classifier::interface2::
 {
     Parameter(size_t nClasses = 2) :
         daal::algorithms::classifier::interface2::Parameter(nClasses),
-        votingMethod(VotingMethod::weighted) {}
+        votingMethod(weighted) {}
     VotingMethod votingMethod;
     services::Status check() const DAAL_C11_OVERRIDE;
 };

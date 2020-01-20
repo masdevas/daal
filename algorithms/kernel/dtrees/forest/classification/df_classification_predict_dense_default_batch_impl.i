@@ -62,6 +62,34 @@ typedef int32_t featureIndexType;
 #define _SCALE_FACTOR_FOR_VECT_PARALLEL_COMPUTE  0.3  /* scale tree size to chose whethever vectorized or not compute path in parallel mode */
 #define _MIN_NUMBER_OF_ROWS_FOR_VECT_SEQ_COMPUTE 1024 /* min number of rows to be predicted by vectorized compute path in sequential mode */
 
+template <typename algorithmFPType, CpuType cpu>
+DAAL_FORCEINLINE void fillResults(size_t nClasses, enum VotingMethod votingMethod, size_t blockSize,
+    const double * probas, const leftOrClassType * classes, const uint32_t * leafsIndexes,
+    algorithmFPType * resPtr) {
+    if (votingMethod == VotingMethod::unweighted || probas == nullptr)
+    {
+        PRAGMA_IVDEP
+        PRAGMA_VECTOR_ALWAYS
+        for (size_t i = 0; i < blockSize; i++)
+        {
+            const size_t cl = classes[leafsIndexes[i]];
+            resPtr[i * nClasses + cl]++;
+        }
+    }
+    else if (votingMethod == VotingMethod::weighted)
+    {
+        for (size_t i = 0; i < blockSize; ++i)
+        {
+            PRAGMA_IVDEP
+            PRAGMA_VECTOR_ALWAYS
+            for (size_t j = 0; j < nClasses; ++j)
+            {
+                resPtr[i * nClasses + j] += probas[leafsIndexes[i] * nClasses + j];
+            }
+        }
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////
 // PredictClassificationTask
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -128,29 +156,8 @@ protected:
             }
         }
         const double * probas = _model->getProbas(iTree);
-
-        if (_votingMethod == VotingMethod::nonWeighted || probas == nullptr)
-        {
-            PRAGMA_IVDEP
-            PRAGMA_VECTOR_ALWAYS
-            for (size_t i = 0; i < blockSize; i++)
-            {
-                const size_t cl = lc[currentNodes[i]];
-                resPtr[i * _nClasses + cl]++;
-            }
-        }
-        else if (_votingMethod == VotingMethod::weighted)
-        {
-            for (size_t i = 0; i < blockSize; i++)
-            {
-                PRAGMA_IVDEP
-                PRAGMA_VECTOR_ALWAYS
-                for (size_t j = 0; j < _nClasses; ++j)
-                {
-                    resPtr[i * _nClasses + j] += probas[currentNodes[i] * _nClasses + j];
-                }
-            }
-        }
+        fillResults<algorithmFPType, cpu>(_nClasses, _votingMethod, blockSize, probas,
+            lc, currentNodes, resPtr);
     }
 
 protected:
@@ -194,7 +201,7 @@ void PredictClassificationTask<algorithmFPType, cpu>::predictByTrees(size_t iFir
         size_t idx                                     = pNode - top;
         const double * probas                          = _model->getProbas(iTree);
 
-        if (_votingMethod == VotingMethod::nonWeighted || probas == nullptr)
+        if (_votingMethod == VotingMethod::unweighted || probas == nullptr)
         {
             resPtr[pNode->leftIndexOrClass] += inverseTreesCount;
         }
@@ -231,7 +238,6 @@ void PredictClassificationTask<algorithmFPType, cpu>::parallelPredict(const algo
         lc[i] = aNode[i].leftIndexOrClass;
         fv[i] = (algorithmFPType)aNode[i].featureValueOrResponse;
     }
-
     daal::threader_for(nBlocks, nBlocks, [&, nCols](size_t iBlock) {
         predictByTree(aX + iBlock * blockSize * nCols, blockSize, nCols, fi, lc, fv, prob + iBlock * blockSize * _nClasses, iTree);
     });
@@ -283,6 +289,7 @@ void PredictClassificationTask<algorithmFPType, cpu>::predictByTree(const algori
 }
 
 #if defined(__INTEL_COMPILER)
+
 template <>
 void PredictClassificationTask<float, avx512>::predictByTree(const float * x, const size_t sizeOfBlock, const size_t nCols,
                                                              const featureIndexType * feat_idx, const leftOrClassType * left_son,
@@ -333,28 +340,8 @@ void PredictClassificationTask<float, avx512>::predictByTree(const float * x, co
         }
         const double * probas = _model->getProbas(iTree);
 
-        if (_votingMethod == VotingMethod::nonWeighted || probas == nullptr)
-        {
-            PRAGMA_IVDEP
-            PRAGMA_VECTOR_ALWAYS
-            for (size_t i = 0; i < _DEFAULT_BLOCK_SIZE; i++)
-            {
-                const size_t cl = left_son[idx[i]];
-                resPtr[i * _nClasses + cl]++;
-            }
-        }
-        else if (_votingMethod == VotingMethod::weighted)
-        {
-            for (size_t i = 0; i < _DEFAULT_BLOCK_SIZE; ++i)
-            {
-                PRAGMA_IVDEP
-                PRAGMA_VECTOR_ALWAYS
-                for (size_t j = 0; j < _nClasses; ++j)
-                {
-                    resPtr[i * _nClasses + j] += probas[idx[i] * _nClasses + j];
-                }
-            }
-        }
+        fillResults<float, avx512>(_nClasses, _votingMethod, _DEFAULT_BLOCK_SIZE, probas,
+            left_son, idx, resPtr);
     }
     else
     {
@@ -407,28 +394,9 @@ void PredictClassificationTask<double, avx512>::predictByTree(const double * x, 
         }
 
         const double * probas = _model->getProbas(iTree);
-        if (_votingMethod == VotingMethod::nonWeighted || probas == nullptr)
-        {
-            PRAGMA_IVDEP
-            PRAGMA_VECTOR_ALWAYS
-            for (size_t i = 0; i < _DEFAULT_BLOCK_SIZE; i++)
-            {
-                const size_t cl = left_son[idx[i]];
-                resPtr[i * _nClasses + cl]++;
-            }
-        }
-        else if (_votingMethod == VotingMethod::weighted)
-        {
-            for (size_t i = 0; i < _DEFAULT_BLOCK_SIZE; ++i)
-            {
-                PRAGMA_IVDEP
-                PRAGMA_VECTOR_ALWAYS
-                for (size_t j = 0; j < _nClasses; ++j)
-                {
-                    resPtr[i * _nClasses + j] += probas[idx[i] * _nClasses + j];
-                }
-            }
-        }
+
+        fillResults<double, avx512>(_nClasses, _votingMethod, _DEFAULT_BLOCK_SIZE, probas,
+            left_son, idx, resPtr);
     }
     else
     {

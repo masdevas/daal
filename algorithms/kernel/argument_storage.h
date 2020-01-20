@@ -43,7 +43,7 @@ public:
     ArgumentStorage(const ArgumentStorage & o) : data_management::DataCollection(o), _extensions(o._extensions) {}
     virtual ~ArgumentStorage() {}
 
-    services::SharedPtr<Base> getExtension(Extension type);
+    services::SharedPtr<Base> getExtension(Extension type) const;
     void setExtension(Extension type, const services::SharedPtr<Base> & ptr);
 
 protected:

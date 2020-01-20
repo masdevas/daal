@@ -369,13 +369,16 @@ public:
     typedef typename super::ResultType ResultType;
 
     InputType input;         /*!< %Input objects of the algorithm */
-    ParameterType parameter; /*!< \ref interface1::Parameter "Parameters" of the algorithm */
 
     /**
      * Constructs Decision forest prediction algorithm
      * \param[in] nClasses  Number of classes
      */
-    Batch(size_t nClasses) : parameter(nClasses) { initialize(); };
+    Batch(size_t nClasses)
+    {
+        _par = new ParameterType(nClasses);
+        initialize();
+    }
 
     /**
      * Constructs a Decision forest prediction algorithm by copying input objects and parameters
@@ -383,18 +386,31 @@ public:
      * \param[in] other An algorithm to be used as the source to initialize the input objects
      *                  and parameters of the algorithm
      */
-    Batch(const Batch<algorithmFPType, method> & other) : classifier::prediction::Batch(other), input(other.input), parameter(other.parameter)
+    Batch(const Batch<algorithmFPType, method> & other) : classifier::prediction::Batch(other), input(other.input)
     {
+        _par = new ParameterType(other.parameter());
         initialize();
     }
 
-    ~Batch() {}
+    ~Batch() { delete _par; }
 
     /**
      * Get input objects for the Decision forest prediction algorithm
      * \return %Input objects for the Decision forest prediction algorithm
      */
     InputType * getInput() DAAL_C11_OVERRIDE { return &input; }
+
+    /**
+     * Gets parameter objects for the Decision forest model prediction algorithm
+     * \return %Parameter objects for the Decision forest model prediction algorithm
+     */
+    ParameterType & parameter() { return *static_cast<ParameterType *>(_par); }
+
+    /**
+    * Gets parameter of the algorithm
+    * \return parameter of the algorithm
+    */
+    const ParameterType & parameter() const { return *static_cast<const ParameterType *>(_par); }
 
     /**
      * Returns method of the algorithm
@@ -414,7 +430,7 @@ protected:
 
     services::Status allocateResult() DAAL_C11_OVERRIDE
     {
-        services::Status s = _result->allocate<algorithmFPType>(&input, &parameter, 0);
+        services::Status s = _result->allocate<algorithmFPType>(&input, _par, 0);
         _res               = _result.get();
         return s;
     }
@@ -423,7 +439,7 @@ protected:
     {
         _in  = &input;
         _ac  = new __DAAL_ALGORITHM_CONTAINER(batch, BatchContainer, algorithmFPType, method)(&_env);
-        _par = &parameter;
+        _result.reset(new ResultType());
     }
 };
 /** @} */

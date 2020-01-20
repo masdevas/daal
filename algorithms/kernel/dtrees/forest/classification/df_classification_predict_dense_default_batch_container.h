@@ -54,23 +54,23 @@ BatchContainer<algorithmFPType, method, cpu>::~BatchContainer()
 template <typename algorithmFPType, Method method, CpuType cpu>
 services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
 {
-    Input * input                           = static_cast<Input *>(_in);
+    const Input * const input                           = static_cast<Input *>(_in);
     classifier::prediction::Result * result = static_cast<classifier::prediction::Result *>(_res);
     const classifier::Parameter * par       = static_cast<classifier::Parameter *>(_par);
     decision_forest::classification::Model * m =
         static_cast<decision_forest::classification::Model *>(input->get(classifier::prediction::model).get());
 
-    NumericTable * a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
-    NumericTable * r =
+    const NumericTable * const a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
+    NumericTable * const r =
         ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassLabels) ? result->get(classifier::prediction::prediction).get() :
                                                                                         nullptr);
-    NumericTable * prob = ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassProbabilities) ?
+    NumericTable * const prob = ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassProbabilities) ?
                                result->get(classifier::prediction::probabilities).get() :
                                nullptr);
 
     daal::services::Environment::env & env = *_env;
 
-    const VotingMethod defaultVotingMethod = VotingMethod::nonWeighted;
+    const VotingMethod defaultVotingMethod = VotingMethod::unweighted;
 
     __DAAL_CALL_KERNEL(env, internal::PredictKernel, __DAAL_KERNEL_ARGUMENTS(algorithmFPType, method), compute,
                        daal::services::internal::hostApp(*input), a, m, r, prob, par->nClasses, defaultVotingMethod);
@@ -95,14 +95,14 @@ BatchContainer<algorithmFPType, method, cpu>::~BatchContainer()
 template <typename algorithmFPType, Method method, CpuType cpu>
 services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
 {
-    Input * const input                           = static_cast<Input *>(_in);
+    const Input * const input                           = static_cast<Input *>(_in);
     classifier::prediction::Result * const result = static_cast<classifier::prediction::Result *>(_res);
     const decision_forest::classification::prediction::Parameter * const par =
         dynamic_cast<decision_forest::classification::prediction::Parameter *>(_par);
     decision_forest::classification::Model * const m =
         static_cast<decision_forest::classification::Model *>(input->get(classifier::prediction::model).get());
 
-    NumericTable * const a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
+    const NumericTable * const a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
     NumericTable * const r =
         ((par->resultsToEvaluate & classifier::ResultToComputeId::computeClassLabels) ? result->get(classifier::prediction::prediction).get() :
                                                                                         nullptr);

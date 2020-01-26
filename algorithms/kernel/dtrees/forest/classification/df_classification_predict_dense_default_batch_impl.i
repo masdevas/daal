@@ -490,9 +490,11 @@ Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTre
     DAAL_CHECK_BLOCK_STATUS(xBD);
     const algorithmFPType * const aX = xBD.get();
     const algorithmFPType inverseNTreesTotal = (algorithmFPType)1.0 / algorithmFPType(nTreesTotal);
+    daal::TlsMem<algorithmFPType, cpu, services::internal::ScalableCalloc<algorithmFPType, cpu> > * tlsDataPtr = nullptr;
     if (numberOfTrees > _MIN_TREES_FOR_THREADING)
     {
-        daal::TlsMem<algorithmFPType, cpu, services::internal::ScalableCalloc<algorithmFPType, cpu> > tlsData(_nClasses * nRowsOfRes);
+        tlsDataPtr = new daal::TlsMem<algorithmFPType, cpu, services::internal::ScalableCalloc<algorithmFPType, cpu> >(_nClasses * nRowsOfRes);
+        auto& tlsData = *tlsDataPtr;
         daal::threader_for(numberOfTrees, numberOfTrees, [&, nCols](const size_t iTree) {
             const size_t treeSize          = _aTree[iTree]->getNumberOfRows();
             const DecisionTreeNode * aNode = (const DecisionTreeNode *)(*_aTree[iTree]).getArray();
@@ -577,6 +579,7 @@ Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTre
                 [&](const size_t iRes) { res[iRes] = algorithmFPType(getMaxClass(commonBufVal + iRes * _nClasses));
             });
     }
+    delete tlsDataPtr;
     return safeStat.detach();
 }
 

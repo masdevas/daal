@@ -68,7 +68,7 @@ services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
     const VotingMethod defaultVotingMethod = VotingMethod::unweighted;
 
     __DAAL_CALL_KERNEL(env, internal::PredictKernel, __DAAL_KERNEL_ARGUMENTS(algorithmFPType, method), compute,
-                       daal::services::internal::hostApp(*input), a, m, r, nullptr, par->nClasses, defaultVotingMethod);
+                       daal::services::internal::hostApp(*const_cast<Input*>(input)), a, m, r, nullptr, par->nClasses, defaultVotingMethod);
 }
 } // namespace interface1
 } // namespace prediction

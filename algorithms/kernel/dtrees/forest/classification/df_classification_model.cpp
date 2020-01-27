@@ -26,6 +26,7 @@
 #include "df_classification_model_impl.h"
 #include "collection.h"
 #include "dtrees_model_impl_common.h"
+#include <iostream>
 
 using namespace daal::data_management;
 using namespace daal::services;
@@ -76,13 +77,18 @@ bool visitSplit(size_t iRowInTable, size_t level, tree_utils::SplitNodeDescripto
 
 template <>
 bool visitLeaf(size_t iRowInTable, size_t level, tree_utils::classification::LeafNodeDescriptor & descLeaf, const DecisionTreeNode * aNode,
-               const double * imp, const int * nodeSamplesCount, tree_utils::classification::TreeNodeVisitor & visitor)
+               const double * imp, const int * nodeSamplesCount, tree_utils::classification::TreeNodeVisitor & visitor,
+               const double * modelProb, size_t nClasses)
 {
     const DecisionTreeNode & n = aNode[iRowInTable];
     if (imp) descLeaf.impurity = imp[iRowInTable];
     if (nodeSamplesCount) descLeaf.nNodeSampleCount = (size_t)(nodeSamplesCount[iRowInTable]);
     descLeaf.level = level;
     descLeaf.label = n.leftIndexOrClass;
+    std::cout << "visitLeaf Read from: " << modelProb + iRowInTable * nClasses << std::endl;
+    std::cout << "visitLeaf nClasses: " << nClasses << std::endl;
+    descLeaf.prob = modelProb + iRowInTable * nClasses;
+    descLeaf.nClasses = nClasses;
     return visitor.onLeafNode(descLeaf);
 }
 
@@ -155,6 +161,8 @@ void ModelImpl::traverseDFS(size_t iTree, tree_utils::classification::TreeNodeVi
     const DecisionTreeNode * aNode = (const DecisionTreeNode *)t.getArray();
     const double * imp             = getImpVals(iTree);
     const int * nodeSamplesCount   = getNodeSampleCount(iTree);
+    const double * modelProb = getProbas(iTree);
+    size_t numberOfClasses = getNumberOfClasses();
     if (aNode)
     {
         tree_utils::SplitNodeDescriptor descSplit;
@@ -164,8 +172,8 @@ void ModelImpl::traverseDFS(size_t iTree, tree_utils::classification::TreeNodeVi
             return visitSplit(iRowInTable, level, descSplit, aNode, imp, nodeSamplesCount, visitor);
         };
 
-        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor](size_t iRowInTable, size_t level) -> bool {
-            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor);
+        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor, &modelProb, numberOfClasses](size_t iRowInTable, size_t level) -> bool {
+            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor, modelProb, numberOfClasses);
         };
 
         traverseNodeDF(0, 0, aNode, onSplitNodeFunc, onLeafNodeFunc);
@@ -179,6 +187,8 @@ void ModelImpl::traverseBFS(size_t iTree, tree_utils::classification::TreeNodeVi
     const DecisionTreeNode * aNode = (const DecisionTreeNode *)t.getArray();
     const double * imp             = getImpVals(iTree);
     const int * nodeSamplesCount   = getNodeSampleCount(iTree);
+    const double * modelProb = getProbas(iTree);
+    size_t numberOfClasses = getNumberOfClasses();
     NodeIdxArray aCur;  //nodes of current layer
     NodeIdxArray aNext; //nodes of next layer
     if (aNode)
@@ -190,8 +200,8 @@ void ModelImpl::traverseBFS(size_t iTree, tree_utils::classification::TreeNodeVi
             return visitSplit(iRowInTable, level, descSplit, aNode, imp, nodeSamplesCount, visitor);
         };
 
-        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor](size_t iRowInTable, size_t level) -> bool {
-            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor);
+        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor, &modelProb, numberOfClasses](size_t iRowInTable, size_t level) -> bool {
+            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor, modelProb, numberOfClasses);
         };
 
         aCur.push_back(0);

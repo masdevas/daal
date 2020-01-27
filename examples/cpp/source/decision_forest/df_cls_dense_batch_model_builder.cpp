@@ -30,6 +30,7 @@
 
 #include "daal.h"
 #include "service.h"
+#include <iostream>
 
 using namespace std;
 using namespace daal;
@@ -87,7 +88,7 @@ void testModel(decision_forest::classification::ModelPtr & model)
     /* Create Numeric Tables for testing data and ground truth values */
     NumericTablePtr testData;
     NumericTablePtr testGroundTruth;
-
+    std::cout << "\n\n MB CASSSE **** \n\n" << std::endl;
     loadData(testDatasetFileName, testData, testGroundTruth);
 
     /* Create an algorithm object to predict values of decision forest classification */

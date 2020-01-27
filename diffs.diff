@@ -1,0 +1,362 @@
+diff --git a/algorithms/kernel/dtrees/dtrees_model.cpp b/algorithms/kernel/dtrees/dtrees_model.cpp
+index 28cbc24..7837e9b 100755
+--- a/algorithms/kernel/dtrees/dtrees_model.cpp
++++ b/algorithms/kernel/dtrees/dtrees_model.cpp
+@@ -22,6 +22,7 @@
+ */
+ 
+ #include "dtrees_model_impl.h"
++#include <iostream>
+ 
+ using namespace daal::data_management;
+ using namespace daal::services;
+@@ -191,6 +192,33 @@ void setNode(DecisionTreeNode & node, int featureIndex, double response)
+     node.featureValueOrResponse = response;
+ }
+ 
++void setProbabilities(size_t treeId, size_t nodeId, size_t response, data_management::DataCollectionPtr probTbl, double * prob)
++{
++    if (probTbl.get() == nullptr)
++    {
++        return;
++    }
++    auto treeProbaTable = (const data_management::HomogenNumericTable<double> *)(*probTbl)[treeId].get();
++    size_t nClasses = treeProbaTable->getNumberOfColumns();
++    std::cout << "nClasses " << nClasses << std::endl;
++    double * probOfTree = treeProbaTable->getArray();
++    if (prob != nullptr)
++    {
++        for (size_t classIndex = 0; classIndex < nClasses; ++classIndex)
++        {
++            probOfTree[classIndex] = prob[classIndex];
++        }
++    }
++    else
++    {
++        for (size_t classIndex = 0; classIndex < nClasses; ++classIndex)
++        {
++            probOfTree[classIndex] = 0.0;
++        }
++        probOfTree[response] = 1.0;
++    }
++}
++
+ services::Status addSplitNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,
+                                       size_t featureIndex, double featureValue, size_t & res)
+ {
+diff --git a/algorithms/kernel/dtrees/dtrees_model_impl.h b/algorithms/kernel/dtrees/dtrees_model_impl.h
+index 0c55e47..58250fa 100755
+--- a/algorithms/kernel/dtrees/dtrees_model_impl.h
++++ b/algorithms/kernel/dtrees/dtrees_model_impl.h
+@@ -340,9 +340,13 @@ void setNode(DecisionTreeNode & node, int featureIndex, double response);
+ services::Status addSplitNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,
+                                       size_t featureIndex, double featureValue, size_t & res);
+ 
++void setProbabilities(size_t treeId, size_t nodeId, size_t response, data_management::DataCollectionPtr probTbl, double * prob);
++
+ template <typename ClassOrResponseType>
+ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,
+-                                            ClassOrResponseType response, size_t & res)
++                                            ClassOrResponseType response, size_t & res,
++                                            data_management::DataCollectionPtr probTbl = data_management::DataCollectionPtr(),
++                                            double * prob = nullptr)
+ {
+     const size_t noParent = static_cast<size_t>(-1);
+ 
+@@ -351,7 +355,6 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+     {
+         return services::Status(services::ErrorID::ErrorIncorrectParameter);
+     }
+-
+     const DecisionTreeTable * const pTreeTable = static_cast<DecisionTreeTable *>((*(serializationData))[treeId].get());
+     if (!pTreeTable) return services::Status(services::ErrorID::ErrorNullPtr);
+     const size_t nRows             = pTreeTable->getNumberOfRows();
+@@ -360,6 +363,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+     if (parentId == noParent)
+     {
+         setNode(aNode[0], -1, response);
++        setProbabilities(treeId, 0, response, probTbl, prob);
+         nodeId = 0;
+     }
+     else if (aNode[parentId].featureIndex < 0)
+@@ -376,6 +380,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
+             {
+                 setNode(aNode[nodeId], -1, response);
++                setProbabilities(treeId, nodeId, response, probTbl, prob);
+             }
+         }
+         else if ((aNode[parentId].leftIndexOrClass > 0) && (position == 0))
+@@ -385,6 +390,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
+             {
+                 setNode(aNode[nodeId], -1, response);
++                setProbabilities(treeId, nodeId, response, probTbl, prob);
+             }
+         }
+         else if ((aNode[parentId].leftIndexOrClass == 0) && (position == 0))
+@@ -404,6 +410,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+                 return services::Status(services::ErrorID::ErrorIncorrectParameter);
+             }
+             setNode(aNode[nodeId], -1, response);
++            setProbabilities(treeId, nodeId, response, probTbl, prob);
+             aNode[parentId].leftIndexOrClass = nodeId;
+             if (((nodeId + 1) < nRows) && (aNode[nodeId + 1].featureIndex == __NODE_FREE_ID))
+             {
+@@ -437,6 +444,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
+             if (nodeId < nRows)
+             {
+                 setNode(aNode[nodeId], -1, response);
++                setProbabilities(treeId, nodeId, response, probTbl, prob);
+             }
+             else
+             {
+@@ -478,6 +486,11 @@ public:
+         return _probTbl ? ((const data_management::HomogenNumericTable<double> *)(*_probTbl)[i].get())->getArray() : nullptr;
+     }
+ 
++    size_t getNumberOfClasses() const
++    {
++        return _probTbl ? ((const data_management::HomogenNumericTable<double> *)(*_probTbl)[0].get())->getNumberOfColumns() : size_t(-1);
++    }
++
+ protected:
+     void destroy();
+     template <typename Archive, bool onDeserialize>
+diff --git a/algorithms/kernel/dtrees/dtrees_model_impl_common.h b/algorithms/kernel/dtrees/dtrees_model_impl_common.h
+index b2671bf..041cd3a 100644
+--- a/algorithms/kernel/dtrees/dtrees_model_impl_common.h
++++ b/algorithms/kernel/dtrees/dtrees_model_impl_common.h
+@@ -103,6 +103,10 @@ template <typename TVisitor, typename TDescriptor>
+ bool visitLeaf(size_t iRowInTable, size_t level, TDescriptor & descLeaf, const DecisionTreeNode * aNode, const double * imp,
+                const int * nodeSamplesCount, TVisitor & visitor);
+ 
++template <typename TVisitor, typename TDescriptor>
++bool visitLeaf(size_t iRowInTable, size_t level, TDescriptor & descLeaf, const DecisionTreeNode * aNode, const double * imp,
++               const int * nodeSamplesCount, TVisitor & visitor, const double * modelProb, size_t nClasses);
++
+ template <typename OnSplitFunctor, typename OnLeafFunctor>
+ bool traverseNodeDF(size_t level, size_t iRowInTable, const DecisionTreeNode * aNode, OnSplitFunctor & visitSplit, OnLeafFunctor & visitLeaf)
+ {
+diff --git a/algorithms/kernel/dtrees/forest/classification/df_classification_model.cpp b/algorithms/kernel/dtrees/forest/classification/df_classification_model.cpp
+index 4088a1e..f55aed1 100755
+--- a/algorithms/kernel/dtrees/forest/classification/df_classification_model.cpp
++++ b/algorithms/kernel/dtrees/forest/classification/df_classification_model.cpp
+@@ -26,6 +26,7 @@
+ #include "df_classification_model_impl.h"
+ #include "collection.h"
+ #include "dtrees_model_impl_common.h"
++#include <iostream>
+ 
+ using namespace daal::data_management;
+ using namespace daal::services;
+@@ -76,13 +77,18 @@ bool visitSplit(size_t iRowInTable, size_t level, tree_utils::SplitNodeDescripto
+ 
+ template <>
+ bool visitLeaf(size_t iRowInTable, size_t level, tree_utils::classification::LeafNodeDescriptor & descLeaf, const DecisionTreeNode * aNode,
+-               const double * imp, const int * nodeSamplesCount, tree_utils::classification::TreeNodeVisitor & visitor)
++               const double * imp, const int * nodeSamplesCount, tree_utils::classification::TreeNodeVisitor & visitor,
++               const double * modelProb, size_t nClasses)
+ {
+     const DecisionTreeNode & n = aNode[iRowInTable];
+     if (imp) descLeaf.impurity = imp[iRowInTable];
+     if (nodeSamplesCount) descLeaf.nNodeSampleCount = (size_t)(nodeSamplesCount[iRowInTable]);
+     descLeaf.level = level;
+     descLeaf.label = n.leftIndexOrClass;
++    std::cout << "visitLeaf Read from: " << modelProb + iRowInTable * nClasses << std::endl;
++    std::cout << "visitLeaf nClasses: " << nClasses << std::endl;
++    descLeaf.prob = modelProb + iRowInTable * nClasses;
++    descLeaf.nClasses = nClasses;
+     return visitor.onLeafNode(descLeaf);
+ }
+ 
+@@ -155,6 +161,8 @@ void ModelImpl::traverseDFS(size_t iTree, tree_utils::classification::TreeNodeVi
+     const DecisionTreeNode * aNode = (const DecisionTreeNode *)t.getArray();
+     const double * imp             = getImpVals(iTree);
+     const int * nodeSamplesCount   = getNodeSampleCount(iTree);
++    const double * modelProb = getProbas(iTree);
++    size_t numberOfClasses = getNumberOfClasses();
+     if (aNode)
+     {
+         tree_utils::SplitNodeDescriptor descSplit;
+@@ -164,8 +172,8 @@ void ModelImpl::traverseDFS(size_t iTree, tree_utils::classification::TreeNodeVi
+             return visitSplit(iRowInTable, level, descSplit, aNode, imp, nodeSamplesCount, visitor);
+         };
+ 
+-        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor](size_t iRowInTable, size_t level) -> bool {
+-            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor);
++        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor, &modelProb, numberOfClasses](size_t iRowInTable, size_t level) -> bool {
++            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor, modelProb, numberOfClasses);
+         };
+ 
+         traverseNodeDF(0, 0, aNode, onSplitNodeFunc, onLeafNodeFunc);
+@@ -179,6 +187,8 @@ void ModelImpl::traverseBFS(size_t iTree, tree_utils::classification::TreeNodeVi
+     const DecisionTreeNode * aNode = (const DecisionTreeNode *)t.getArray();
+     const double * imp             = getImpVals(iTree);
+     const int * nodeSamplesCount   = getNodeSampleCount(iTree);
++    const double * modelProb = getProbas(iTree);
++    size_t numberOfClasses = getNumberOfClasses();
+     NodeIdxArray aCur;  //nodes of current layer
+     NodeIdxArray aNext; //nodes of next layer
+     if (aNode)
+@@ -190,8 +200,8 @@ void ModelImpl::traverseBFS(size_t iTree, tree_utils::classification::TreeNodeVi
+             return visitSplit(iRowInTable, level, descSplit, aNode, imp, nodeSamplesCount, visitor);
+         };
+ 
+-        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor](size_t iRowInTable, size_t level) -> bool {
+-            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor);
++        auto onLeafNodeFunc = [&descLeaf, &aNode, &imp, &nodeSamplesCount, &visitor, &modelProb, numberOfClasses](size_t iRowInTable, size_t level) -> bool {
++            return visitLeaf(iRowInTable, level, descLeaf, aNode, imp, nodeSamplesCount, visitor, modelProb, numberOfClasses);
+         };
+ 
+         aCur.push_back(0);
+diff --git a/algorithms/kernel/dtrees/forest/classification/df_classification_model_builder.cpp b/algorithms/kernel/dtrees/forest/classification/df_classification_model_builder.cpp
+index 052488d..e694342 100755
+--- a/algorithms/kernel/dtrees/forest/classification/df_classification_model_builder.cpp
++++ b/algorithms/kernel/dtrees/forest/classification/df_classification_model_builder.cpp
+@@ -25,6 +25,7 @@
+ #include "algorithms/decision_forest/decision_forest_classification_model.h"
+ #include "../../dtrees_model_impl.h"
+ #include "df_classification_model_impl.h"
++#include "service_utils.h"
+ 
+ using namespace daal::data_management;
+ using namespace daal::services;
+@@ -81,6 +82,64 @@ services::Status ModelBuilder::addSplitNodeInternal(TreeId treeId, NodeId parent
+ }
+ 
+ } // namespace interface1
++
++namespace interface2
++{
++services::Status ModelBuilder::initialize(size_t nClasses, size_t nTrees)
++{
++    auto modelImpl = new decision_forest::classification::internal::ModelImpl();
++    DAAL_CHECK_MALLOC(modelImpl)
++    _model.reset(modelImpl);
++    decision_forest::classification::internal::ModelImpl & modelImplRef =
++        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
++    modelImplRef.resize(nTrees);
++    modelImplRef._impurityTables.reset();
++    modelImplRef._nNodeSampleTables.reset();
++    modelImplRef._nTree.set(nTrees);
++    return Status();
++}
++
++services::Status ModelBuilder::createTreeWithProb(size_t nNodes, TreeId & resId)
++{
++    decision_forest::classification::internal::ModelImpl & modelImplRef =
++        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
++    auto probTbl = new HomogenNumericTable<double>(nNodes, _nClasses, NumericTable::doAllocate);
++    (*(modelImplRef._probTbl))[resId - 1].reset(probTbl);
++    services::Status status = daal::algorithms::dtrees::internal::createTreeInternal(modelImplRef._serializationData, nNodes, resId);
++    return status;
++}
++
++services::Status ModelBuilder::addLeafNodeInternal(TreeId treeId, NodeId parentId, size_t position, size_t classLabel, NodeId & res)
++{
++    decision_forest::classification::internal::ModelImpl & modelImplRef =
++        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
++    return daal::algorithms::dtrees::internal::addLeafNodeInternal<size_t>(modelImplRef._serializationData, treeId, parentId, position, classLabel,
++                                                                           res);
++}
++
++services::Status ModelBuilder::addLeafNodeInternal(TreeId treeId, NodeId parentId, size_t position, double* proba, NodeId & res)
++{
++    if (proba == nullptr)
++    {
++        return services::Status(services::ErrorID::ErrorIncorrectParameter);
++    }
++    decision_forest::classification::internal::ModelImpl & modelImplRef =
++        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
++    size_t classLabel = services::internal::getMaxElementIndex<double, sse2>(proba, _nClasses);
++    return daal::algorithms::dtrees::internal::addLeafNodeInternal<size_t>(modelImplRef._serializationData, treeId,
++        parentId, position, classLabel, res, modelImplRef._probTbl, proba);
++}
++
++services::Status ModelBuilder::addSplitNodeInternal(TreeId treeId, NodeId parentId, size_t position, size_t featureIndex, double featureValue,
++                                                    NodeId & res)
++{
++    decision_forest::classification::internal::ModelImpl & modelImplRef =
++        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
++    return daal::algorithms::dtrees::internal::addSplitNodeInternal(modelImplRef._serializationData, treeId, parentId, position, featureIndex,
++                                                                    featureValue, res);
++}
++
++} // namespace interface2
+ } // namespace classification
+ } // namespace decision_forest
+ } // namespace algorithms
+diff --git a/algorithms/kernel/dtrees/forest/classification/df_classification_model_impl.h b/algorithms/kernel/dtrees/forest/classification/df_classification_model_impl.h
+index e1178a5..6f5c30c 100644
+--- a/algorithms/kernel/dtrees/forest/classification/df_classification_model_impl.h
++++ b/algorithms/kernel/dtrees/forest/classification/df_classification_model_impl.h
+@@ -43,7 +43,8 @@ class ModelImpl : public decision_forest::classification::Model,
+                   public dtrees::internal::ModelImpl
+ {
+ public:
+-    friend class decision_forest::classification::ModelBuilder;
++    friend class decision_forest::classification::interface1::ModelBuilder;
++    friend class decision_forest::classification::interface2::ModelBuilder;
+     typedef dtrees::internal::ModelImpl ImplType;
+     typedef algorithms::classifier::internal::ModelInternal ClassifierImplType;
+     typedef dtrees::internal::TreeImpClassification<> TreeType;
+diff --git a/examples/cpp/source/decision_forest/df_cls_dense_batch_model_builder.cpp b/examples/cpp/source/decision_forest/df_cls_dense_batch_model_builder.cpp
+index 653123f..47331fc 100644
+--- a/examples/cpp/source/decision_forest/df_cls_dense_batch_model_builder.cpp
++++ b/examples/cpp/source/decision_forest/df_cls_dense_batch_model_builder.cpp
+@@ -30,6 +30,7 @@
+ 
+ #include "daal.h"
+ #include "service.h"
++#include <iostream>
+ 
+ using namespace std;
+ using namespace daal;
+@@ -87,7 +88,7 @@ void testModel(decision_forest::classification::ModelPtr & model)
+     /* Create Numeric Tables for testing data and ground truth values */
+     NumericTablePtr testData;
+     NumericTablePtr testGroundTruth;
+-
++    std::cout << "\n\n MB CASSSE **** \n\n" << std::endl;
+     loadData(testDatasetFileName, testData, testGroundTruth);
+ 
+     /* Create an algorithm object to predict values of decision forest classification */
+diff --git a/include/algorithms/tree_utils/tree_utils_classification.h b/include/algorithms/tree_utils/tree_utils_classification.h
+index 9e23702..a8a884e 100644
+--- a/include/algorithms/tree_utils/tree_utils_classification.h
++++ b/include/algorithms/tree_utils/tree_utils_classification.h
+@@ -57,9 +57,30 @@ typedef daal::algorithms::tree_utils::TreeNodeVisitor<LeafNodeDescriptor> TreeNo
+ typedef daal::algorithms::tree_utils::SplitNodeDescriptor SplitNodeDescriptor;
+ 
+ } // namespace interface1
+-using interface1::TreeNodeVisitor;
+-using interface1::SplitNodeDescriptor;
+-using interface1::LeafNodeDescriptor;
++
++/**
++ * \brief Contains version 2.0 of the Intel(R) Data Analytics Acceleration Library (Intel(R) DAAL) interface.
++ */
++namespace interface2
++{
++/**
++ * <a name="DAAL-CLASS-ALGORITHMS__TREE_UTILS__CLASSIFICATION__LEAFNODEDESCRIPTOR"></a>
++ * \brief %Struct containing description of leaf node in classification descision tree
++ */
++struct DAAL_EXPORT LeafNodeDescriptor : public NodeDescriptor
++{
++    size_t label; /*!< Label to be predicted when reaching the leaf */
++    const double * prob; /*!< Probabilities estimation for the leaf */
++    size_t nClasses;
++};
++
++typedef daal::algorithms::tree_utils::TreeNodeVisitor<LeafNodeDescriptor> TreeNodeVisitor;
++typedef daal::algorithms::tree_utils::SplitNodeDescriptor SplitNodeDescriptor;
++
++} // namespace interface2
++using interface2::TreeNodeVisitor;
++using interface2::SplitNodeDescriptor;
++using interface2::LeafNodeDescriptor;
+ } // namespace classification
+ } // namespace tree_utils
+ } // namespace algorithms

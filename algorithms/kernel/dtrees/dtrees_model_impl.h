@@ -340,9 +340,13 @@ void setNode(DecisionTreeNode & node, int featureIndex, double response);
 services::Status addSplitNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,
                                       size_t featureIndex, double featureValue, size_t & res);
 
+void setProbabilities(size_t treeId, size_t nodeId, size_t response, data_management::DataCollectionPtr probTbl, double * prob);
+
 template <typename ClassOrResponseType>
 static services::Status addLeafNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,
-                                            ClassOrResponseType response, size_t & res)
+                                            ClassOrResponseType response, size_t & res,
+                                            data_management::DataCollectionPtr probTbl = data_management::DataCollectionPtr(),
+                                            double * prob = nullptr)
 {
     const size_t noParent = static_cast<size_t>(-1);
 
@@ -351,7 +355,6 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
     {
         return services::Status(services::ErrorID::ErrorIncorrectParameter);
     }
-
     const DecisionTreeTable * const pTreeTable = static_cast<DecisionTreeTable *>((*(serializationData))[treeId].get());
     if (!pTreeTable) return services::Status(services::ErrorID::ErrorNullPtr);
     const size_t nRows             = pTreeTable->getNumberOfRows();
@@ -360,6 +363,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
     if (parentId == noParent)
     {
         setNode(aNode[0], -1, response);
+        setProbabilities(treeId, 0, response, probTbl, prob);
         nodeId = 0;
     }
     else if (aNode[parentId].featureIndex < 0)
@@ -376,6 +380,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
             {
                 setNode(aNode[nodeId], -1, response);
+                setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
         }
         else if ((aNode[parentId].leftIndexOrClass > 0) && (position == 0))
@@ -385,6 +390,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
             {
                 setNode(aNode[nodeId], -1, response);
+                setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
         }
         else if ((aNode[parentId].leftIndexOrClass == 0) && (position == 0))
@@ -404,6 +410,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
                 return services::Status(services::ErrorID::ErrorIncorrectParameter);
             }
             setNode(aNode[nodeId], -1, response);
+            setProbabilities(treeId, nodeId, response, probTbl, prob);
             aNode[parentId].leftIndexOrClass = nodeId;
             if (((nodeId + 1) < nRows) && (aNode[nodeId + 1].featureIndex == __NODE_FREE_ID))
             {
@@ -437,6 +444,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             if (nodeId < nRows)
             {
                 setNode(aNode[nodeId], -1, response);
+                setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
             else
             {
@@ -476,6 +484,11 @@ public:
     const double * getProbas(size_t i) const
     {
         return _probTbl ? ((const data_management::HomogenNumericTable<double> *)(*_probTbl)[i].get())->getArray() : nullptr;
+    }
+
+    size_t getNumberOfClasses() const
+    {
+        return _probTbl ? ((const data_management::HomogenNumericTable<double> *)(*_probTbl)[0].get())->getNumberOfColumns() : size_t(-1);
     }
 
 protected:

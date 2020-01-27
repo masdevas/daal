@@ -22,6 +22,7 @@
 */
 
 #include "dtrees_model_impl.h"
+#include <iostream>
 
 using namespace daal::data_management;
 using namespace daal::services;
@@ -189,6 +190,33 @@ void setNode(DecisionTreeNode & node, int featureIndex, double response)
     node.featureIndex           = featureIndex;
     node.leftIndexOrClass       = 0;
     node.featureValueOrResponse = response;
+}
+
+void setProbabilities(size_t treeId, size_t nodeId, size_t response, data_management::DataCollectionPtr probTbl, double * prob)
+{
+    if (probTbl.get() == nullptr)
+    {
+        return;
+    }
+    auto treeProbaTable = (const data_management::HomogenNumericTable<double> *)(*probTbl)[treeId].get();
+    size_t nClasses = treeProbaTable->getNumberOfColumns();
+    std::cout << "nClasses " << nClasses << std::endl;
+    double * probOfTree = treeProbaTable->getArray();
+    if (prob != nullptr)
+    {
+        for (size_t classIndex = 0; classIndex < nClasses; ++classIndex)
+        {
+            probOfTree[classIndex] = prob[classIndex];
+        }
+    }
+    else
+    {
+        for (size_t classIndex = 0; classIndex < nClasses; ++classIndex)
+        {
+            probOfTree[classIndex] = 0.0;
+        }
+        probOfTree[response] = 1.0;
+    }
 }
 
 services::Status addSplitNodeInternal(data_management::DataCollectionPtr & serializationData, size_t treeId, size_t parentId, size_t position,

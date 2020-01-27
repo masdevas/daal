@@ -43,7 +43,8 @@ class ModelImpl : public decision_forest::classification::Model,
                   public dtrees::internal::ModelImpl
 {
 public:
-    friend class decision_forest::classification::ModelBuilder;
+    friend class decision_forest::classification::interface1::ModelBuilder;
+    friend class decision_forest::classification::interface2::ModelBuilder;
     typedef dtrees::internal::ModelImpl ImplType;
     typedef algorithms::classifier::internal::ModelInternal ClassifierImplType;
     typedef dtrees::internal::TreeImpClassification<> TreeType;

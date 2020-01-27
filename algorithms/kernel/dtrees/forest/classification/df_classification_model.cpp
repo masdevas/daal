@@ -85,8 +85,8 @@ bool visitLeaf(size_t iRowInTable, size_t level, tree_utils::classification::Lea
     if (nodeSamplesCount) descLeaf.nNodeSampleCount = (size_t)(nodeSamplesCount[iRowInTable]);
     descLeaf.level = level;
     descLeaf.label = n.leftIndexOrClass;
-    std::cout << "visitLeaf Read from: " << modelProb + iRowInTable * nClasses << std::endl;
-    std::cout << "visitLeaf nClasses: " << nClasses << std::endl;
+    //std::cout << "visitLeaf Read from: " << modelProb + iRowInTable * nClasses << std::endl;
+    //std::cout << "visitLeaf nClasses: " << nClasses << std::endl;
     descLeaf.prob = modelProb + iRowInTable * nClasses;
     descLeaf.nClasses = nClasses;
     return visitor.onLeafNode(descLeaf);

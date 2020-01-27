@@ -26,7 +26,6 @@
 #include "../../dtrees_model_impl.h"
 #include "df_classification_model_impl.h"
 #include "service_utils.h"
-#include <iostream>
 
 using namespace daal::data_management;
 using namespace daal::services;
@@ -40,7 +39,7 @@ namespace decision_forest
 {
 namespace classification
 {
-namespace interface2
+namespace interface1
 {
 services::Status ModelBuilder::initialize(size_t nClasses, size_t nTrees)
 {
@@ -49,22 +48,20 @@ services::Status ModelBuilder::initialize(size_t nClasses, size_t nTrees)
     _model.reset(modelImpl);
     decision_forest::classification::internal::ModelImpl & modelImplRef =
         daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
+
     modelImplRef.resize(nTrees);
     modelImplRef._impurityTables.reset();
     modelImplRef._nNodeSampleTables.reset();
+    modelImplRef._probTbl.reset();
     modelImplRef._nTree.set(nTrees);
     return Status();
 }
 
-services::Status ModelBuilder::createTreeWithProb(size_t nNodes, TreeId & resId)
+services::Status ModelBuilder::createTreeInternal(size_t nNodes, TreeId & resId)
 {
     decision_forest::classification::internal::ModelImpl & modelImplRef =
         daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
-    auto probTbl = new HomogenNumericTable<double>(nNodes, _nClasses, NumericTable::doAllocate);
-    services::Status status = daal::algorithms::dtrees::internal::createTreeInternal(modelImplRef._serializationData, nNodes, resId);
-    (*(modelImplRef._probTbl))[resId].reset(probTbl);
-    //std::cout << "Created tree with ID: " << resId << std::endl;
-    return status;
+    return daal::algorithms::dtrees::internal::createTreeInternal(modelImplRef._serializationData, nNodes, resId);
 }
 
 services::Status ModelBuilder::addLeafNodeInternal(TreeId treeId, NodeId parentId, size_t position, size_t classLabel, NodeId & res)
@@ -75,20 +72,6 @@ services::Status ModelBuilder::addLeafNodeInternal(TreeId treeId, NodeId parentI
                                                                            res);
 }
 
-services::Status ModelBuilder::addLeafNodeInternal(TreeId treeId, NodeId parentId, size_t position, double* proba, NodeId & res)
-{
-    //std::cout << "Start node adding" << std::endl;
-    if (proba == nullptr)
-    {
-        return services::Status(services::ErrorID::ErrorIncorrectParameter);
-    }
-    decision_forest::classification::internal::ModelImpl & modelImplRef =
-        daal::algorithms::dtrees::internal::getModelRef<decision_forest::classification::internal::ModelImpl, ModelPtr>(_model);
-    size_t classLabel = services::internal::getMaxElementIndex<double, sse2>(proba, _nClasses);
-    return daal::algorithms::dtrees::internal::addLeafNodeInternal<size_t>(modelImplRef._serializationData, treeId,
-        parentId, position, classLabel, res, modelImplRef._probTbl, proba);
-}
-
 services::Status ModelBuilder::addSplitNodeInternal(TreeId treeId, NodeId parentId, size_t position, size_t featureIndex, double featureValue,
                                                     NodeId & res)
 {
@@ -97,7 +80,8 @@ services::Status ModelBuilder::addSplitNodeInternal(TreeId treeId, NodeId parent
     return daal::algorithms::dtrees::internal::addSplitNodeInternal(modelImplRef._serializationData, treeId, parentId, position, featureIndex,
                                                                     featureValue, res);
 }
-} // namespace interface2
+
+} // namespace interface1
 } // namespace classification
 } // namespace decision_forest
 } // namespace algorithms

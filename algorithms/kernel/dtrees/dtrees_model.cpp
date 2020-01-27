@@ -194,13 +194,17 @@ void setNode(DecisionTreeNode & node, int featureIndex, double response)
 
 void setProbabilities(size_t treeId, size_t nodeId, size_t response, data_management::DataCollectionPtr probTbl, double * prob)
 {
+    //std::cout << "ARGS" << std::endl;
+   // std::cout << probTbl.get() << ' ' << prob << std::endl;
     if (probTbl.get() == nullptr)
     {
         return;
     }
+    //std::cout << "Tree ID:" << treeId << std::endl;
     auto treeProbaTable = (const data_management::HomogenNumericTable<double> *)(*probTbl)[treeId].get();
+    //std::cout << "Tree proba table :" << treeProbaTable << std::endl;
     size_t nClasses = treeProbaTable->getNumberOfColumns();
-    std::cout << "nClasses " << nClasses << std::endl;
+    //std::cout << "nClasses " << nClasses << std::endl;
     double * probOfTree = treeProbaTable->getArray();
     if (prob != nullptr)
     {

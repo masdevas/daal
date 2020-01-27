@@ -30,6 +30,7 @@
 #include "data_management/data/homogen_numeric_table.h"
 #include "data_management/data/aos_numeric_table.h"
 #include "service_memory.h"
+#include <iostream>
 
 typedef size_t ClassIndexType;
 typedef double ModelFPType;
@@ -348,6 +349,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
                                             data_management::DataCollectionPtr probTbl = data_management::DataCollectionPtr(),
                                             double * prob = nullptr)
 {
+    //std::cout << "addLeafNodeInternal START" << std::endl;
     const size_t noParent = static_cast<size_t>(-1);
 
     services::Status s;
@@ -360,8 +362,10 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
     const size_t nRows             = pTreeTable->getNumberOfRows();
     DecisionTreeNode * const aNode = (DecisionTreeNode *)pTreeTable->getArray();
     size_t nodeId                  = 0;
+    //std::cout << "addLeafNodeInternal START 1" << std::endl;
     if (parentId == noParent)
     {
+        //std::cout << "addLeafNodeInternal START 2" << std::endl;
         setNode(aNode[0], -1, response);
         setProbabilities(treeId, 0, response, probTbl, prob);
         nodeId = 0;
@@ -379,6 +383,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             nodeId                  = reservedId;
             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
             {
+                //std::cout << "addLeafNodeInternal START 3" << std::endl;
                 setNode(aNode[nodeId], -1, response);
                 setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
@@ -389,6 +394,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             nodeId                  = reservedId;
             if (aNode[reservedId].featureIndex == __NODE_RESERVED_ID)
             {
+                //std::cout << "addLeafNodeInternal START 4" << std::endl;
                 setNode(aNode[nodeId], -1, response);
                 setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
@@ -409,15 +415,20 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             {
                 return services::Status(services::ErrorID::ErrorIncorrectParameter);
             }
+            //std::cout << "addLeafNodeInternal START 5" << std::endl;
             setNode(aNode[nodeId], -1, response);
+           // std::cout << "Step1" << std::endl;
             setProbabilities(treeId, nodeId, response, probTbl, prob);
+            //std::cout << "Step2" << std::endl;
             aNode[parentId].leftIndexOrClass = nodeId;
             if (((nodeId + 1) < nRows) && (aNode[nodeId + 1].featureIndex == __NODE_FREE_ID))
             {
+                //std::cout << "Step3" << std::endl;
                 aNode[nodeId + 1].featureIndex = __NODE_RESERVED_ID;
             }
             else
             {
+                //std::cout << "Step4" << std::endl;
                 return services::Status(services::ErrorID::ErrorIncorrectParameter);
             }
         }
@@ -443,6 +454,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
             nodeId                           = leftEmptyId + 1;
             if (nodeId < nRows)
             {
+                //std::cout << "addLeafNodeInternal START 6" << std::endl;
                 setNode(aNode[nodeId], -1, response);
                 setProbabilities(treeId, nodeId, response, probTbl, prob);
             }
@@ -453,6 +465,7 @@ static services::Status addLeafNodeInternal(data_management::DataCollectionPtr &
         }
     }
     res = nodeId;
+    //std::cout << "addLeafNodeInternal end" << std::endl;
     return s;
 }
 

@@ -24,6 +24,7 @@
 #define __DECISION_FOREST_CLASSIFICATION_MODEL_BUILDER_H__
 
 #include "algorithms/decision_forest/decision_forest_classification_model.h"
+#include <iostream>
 
 namespace daal
 {
@@ -223,6 +224,7 @@ public:
     {
         NodeId resId;
         _status |= addLeafNodeInternal(treeId, parentId, position, classLabel, resId);
+        //std::cout << "CLS BLD" << std::endl;
         services::throwIfPossible(_status);
         return resId;
     }
@@ -239,6 +241,7 @@ public:
     {
         NodeId resId;
         _status |= addLeafNodeInternal(treeId, parentId, position, proba, resId);
+        //std::cout << "PROBA BLD" << std::endl;
         services::throwIfPossible(_status);
         return resId;
     }

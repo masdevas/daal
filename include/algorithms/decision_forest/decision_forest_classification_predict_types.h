@@ -117,7 +117,7 @@ public:
 
 /**
  * <a name="DAAL-STRUCT-ALGORITHMS__CLASSIFIER__PARAMETER"></a>
- * \brief Class for the parameters of the Decision Forest classification algorithm  \DAAL_DEPRECATED
+ * \brief Class for the parameters of the Decision Forest classification algorithm
  *
  * \snippet decision_forest/decision_forest_classification_predict_types.h Parameter source code
  */

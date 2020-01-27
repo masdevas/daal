@@ -1,4 +1,4 @@
-/* file: df_classification_predict_dense_default_batch_fpt_cpu.cpp */
+/* file: df_classification_predict_dense_default_batch_fpt_cpu_v2.cpp */
 /*******************************************************************************
 * Copyright 2014-2020 Intel Corporation
 *
@@ -23,7 +23,7 @@
 
 #include "df_classification_predict_dense_default_batch.h"
 #include "df_classification_predict_dense_default_batch_impl.i"
-#include "df_classification_predict_dense_default_batch_container.h"
+#include "df_classification_predict_dense_default_batch_container_v2.h"
 
 namespace daal
 {
@@ -35,14 +35,10 @@ namespace classification
 {
 namespace prediction
 {
-namespace interface3
+namespace interface2
 {
 template class BatchContainer<DAAL_FPTYPE, defaultDense, DAAL_CPU>;
-}
-namespace internal
-{
-template class PredictKernel<DAAL_FPTYPE, defaultDense, DAAL_CPU>;
-}
+} // namespace interface2
 } // namespace prediction
 } // namespace classification
 } // namespace decision_forest

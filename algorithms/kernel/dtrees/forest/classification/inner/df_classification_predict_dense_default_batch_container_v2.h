@@ -1,4 +1,4 @@
-/* file: df_classification_predict_dense_default_batch_container.h */
+/* file: df_classification_predict_dense_default_batch_container_v2.h */
 /*******************************************************************************
 * Copyright 2014-2020 Intel Corporation
 *
@@ -37,7 +37,7 @@ namespace classification
 {
 namespace prediction
 {
-namespace interface3
+namespace interface2
 {
 template <typename algorithmFPType, Method method, CpuType cpu>
 BatchContainer<algorithmFPType, method, cpu>::BatchContainer(daal::services::Environment::env * daalEnv) : PredictionContainerIface()
@@ -55,10 +55,9 @@ template <typename algorithmFPType, Method method, CpuType cpu>
 services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
 {
     const Input * const input                           = static_cast<Input *>(_in);
-    classifier::prediction::Result * const result = static_cast<classifier::prediction::Result *>(_res);
-    const decision_forest::classification::prediction::Parameter * const par =
-        dynamic_cast<decision_forest::classification::prediction::Parameter *>(_par);
-    decision_forest::classification::Model * const m =
+    classifier::prediction::Result * result = static_cast<classifier::prediction::Result *>(_res);
+    const classifier::Parameter * par       = static_cast<classifier::Parameter *>(_par);
+    decision_forest::classification::Model * m =
         static_cast<decision_forest::classification::Model *>(input->get(classifier::prediction::model).get());
 
     const NumericTable * const a = static_cast<NumericTable *>(input->get(classifier::prediction::data).get());
@@ -69,13 +68,15 @@ services::Status BatchContainer<algorithmFPType, method, cpu>::compute()
                                result->get(classifier::prediction::probabilities).get() :
                                nullptr);
 
-    const daal::services::Environment::env & env = *_env;
+    daal::services::Environment::env & env = *_env;
 
-    const VotingMethod votingMethod = par->votingMethod;
+    const VotingMethod defaultVotingMethod = VotingMethod::unweighted;
+
     __DAAL_CALL_KERNEL(env, internal::PredictKernel, __DAAL_KERNEL_ARGUMENTS(algorithmFPType, method), compute,
-                       daal::services::internal::hostApp(*const_cast<Input*>(input)), a, m, r, prob, par->nClasses, votingMethod);
+                       daal::services::internal::hostApp(*const_cast<Input*>(input)), a, m, r, prob, par->nClasses, defaultVotingMethod);
 }
-} // namespace interface3
+
+} // namespace interface2
 } // namespace prediction
 } // namespace classification
 } // namespace decision_forest

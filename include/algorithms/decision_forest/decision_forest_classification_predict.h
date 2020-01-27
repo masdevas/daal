@@ -374,11 +374,7 @@ public:
      * Constructs Decision forest prediction algorithm
      * \param[in] nClasses  Number of classes
      */
-    Batch(size_t nClasses)
-    {
-        _par = new ParameterType(nClasses);
-        initialize();
-    }
+    Batch(size_t nClasses);
 
     /**
      * Constructs a Decision forest prediction algorithm by copying input objects and parameters
@@ -386,11 +382,7 @@ public:
      * \param[in] other An algorithm to be used as the source to initialize the input objects
      *                  and parameters of the algorithm
      */
-    Batch(const Batch<algorithmFPType, method> & other) : classifier::prediction::Batch(other), input(other.input)
-    {
-        _par = new ParameterType(other.parameter());
-        initialize();
-    }
+    Batch(const Batch<algorithmFPType, method> & other);
 
     ~Batch() { delete _par; }
 

@@ -23,7 +23,7 @@
 //--
 */
 
-#include "df_classification_predict_dense_default_batch_container.h"
+#include "df_classification_predict_dense_default_batch_container_v2.h"
 
 namespace daal
 {

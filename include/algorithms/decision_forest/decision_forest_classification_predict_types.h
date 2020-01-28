@@ -126,7 +126,7 @@ struct DAAL_EXPORT Parameter : public daal::algorithms::classifier::interface2::
 {
     Parameter(size_t nClasses = 2) :
         daal::algorithms::classifier::interface2::Parameter(nClasses),
-        votingMethod(weighted) {}
+        votingMethod(unweighted) {}
     VotingMethod votingMethod;
     services::Status check() const DAAL_C11_OVERRIDE;
 };

@@ -36,6 +36,7 @@
 #include "service_error_handling.h"
 #include "service_arrays.h"
 #include "algorithms/decision_forest/decision_forest_classification_model.h"
+#include <iostream>
 
 using namespace daal::internal;
 using namespace daal::services;
@@ -129,7 +130,7 @@ protected:
     void parallelPredict(const algorithmFPType * aX, const DecisionTreeNode * aNode, size_t treeSize, size_t nBlocks, size_t nCols, size_t blockSize,
                          size_t residualSize, algorithmFPType * prob, size_t iTree);
     Status predictByAllTrees(size_t nTreesTotal, const DimType & dim);
-    Status predictAllPointsByAllTrees(size_t nTreesTotal);
+    Status predictAllPointsByAllTrees(size_t nTreesTotal, const DimType & dim);
     Status predictByBlocksOfTrees(services::HostAppIface * pHostApp, size_t nTreesTotal, const DimType & dim, algorithmFPType * aClsCounters);
     size_t getMaxClass(const algorithmFPType * counts) const
     {
@@ -459,7 +460,7 @@ Status PredictClassificationTask<algorithmFPType, cpu>::predictByAllTrees(size_t
 }
 
 template <typename algorithmFPType, CpuType cpu>
-Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTrees(size_t nTreesTotal)
+Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTrees(size_t nTreesTotal, const DimType & dim)
 {
     WriteOnlyRows<algorithmFPType, cpu> resBD(_res, 0, 1);
     DAAL_CHECK_BLOCK_STATUS(resBD);
@@ -572,12 +573,42 @@ Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTre
             }
         }
     }
-    const size_t nBlocksExtendet             = (residualSize != 0) ? (nBlocks + 1) : nBlocks;
+    //const size_t nBlocksExtendet             = (residualSize != 0) ? (nBlocks + 1) : nBlocks;
+    // if (res != nullptr)
+    // {
+    //     daal::threader_for(nRowsOfRes, nRowsOfRes,
+    //             [&](const size_t iRes) { res[iRes] = algorithmFPType(getMaxClass(commonBufVal + iRow * _nClasses));
+    //         });
+    // }
     if (res != nullptr)
     {
-        daal::threader_for(nRowsOfRes, nRowsOfRes,
-                [&](const size_t iRes) { res[iRes] = algorithmFPType(getMaxClass(commonBufVal + iRes * _nClasses));
+        if (nRowsOfRes < 2 * daal::threader_get_threads_number() || cpu == __avx512_mic__)
+        {
+            for (size_t iRow = 0; iRow < nRowsOfRes; ++iRow)
+            {
+                if (_res)
+                {
+                    res[iRow] = algorithmFPType(getMaxClass(commonBufVal + iRow * _nClasses));
+                }
+            }
+        }
+        else
+        {
+            daal::threader_for(dim.nDataBlocks, dim.nDataBlocks, [&](size_t iBlock) {
+                const size_t iStartRow      = iBlock * dim.nRowsInBlock;
+                const size_t nRowsToProcess = (iBlock == dim.nDataBlocks - 1) ? dim.nRowsTotal - iStartRow : dim.nRowsInBlock;
+                for (size_t iRow = 0; iRow < nRowsToProcess; ++iRow)
+                {
+                    res[iRow] = algorithmFPType(getMaxClass(commonBufVal + iStartRow + iRow * _nClasses));
+                }
             });
+            // daal::threader_for(nRowsOfRes, nRowsOfRes, [&](size_t iRow) {
+            //     if (_res)
+            //     {
+            //         res[iRow] = algorithmFPType(getMaxClass(commonBufVal + iRow * _nClasses));
+            //     }
+            // });
+        }
     }
     delete tlsDataPtr;
     return safeStat.detach();
@@ -596,28 +627,41 @@ Status PredictClassificationTask<algorithmFPType, cpu>::run(services::HostAppIfa
         _aTree[i] = _model->at(i);
         averageTreeSize += _aTree[i]->getNumberOfRows();
     }
+    //std::cout << "START" << std::endl;
     averageTreeSize = averageTreeSize / nTreesTotal;
     size_t rowsNumber = _res ? _res->getNumberOfRows() : _prob->getNumberOfRows();
+    const auto treeSize = _aTree[0]->getNumberOfRows() * sizeof(dtrees::internal::DecisionTreeNode);
+        DimType dim(*_data, nTreesTotal, treeSize, _nClasses);
     if (_featHelper.hasUnorderedFeatures()
         || (rowsNumber < averageTreeSize * _SCALE_FACTOR_FOR_VECT_PARALLEL_COMPUTE && daal::threader_get_threads_number() > 1)
         || (rowsNumber < _MIN_NUMBER_OF_ROWS_FOR_VECT_SEQ_COMPUTE && daal::threader_get_threads_number() == 1))
     {
-        const auto treeSize = _aTree[0]->getNumberOfRows() * sizeof(dtrees::internal::DecisionTreeNode);
-        DimType dim(*_data, nTreesTotal, treeSize, _nClasses);
+
         DAAL_OVERFLOW_CHECK_BY_MULTIPLICATION(size_t, _nClasses, dim.nRowsTotal);
         DAAL_OVERFLOW_CHECK_BY_MULTIPLICATION(size_t, _nClasses * dim.nRowsTotal, sizeof(ClassIndexType));
 
         if (dim.nTreeBlocks == 1) //all fit into LL cache
+        {
+            //std::cout << "1" << std::endl;
             return predictByAllTrees(nTreesTotal, dim);
+        }
 
         services::internal::TArrayCalloc<algorithmFPType, cpu> aClsCounters(dim.nRowsTotal * _nClasses);
         if (!aClsCounters.get())
+        {
+            //std::cout << "2" << std::endl;
             return predictByAllTrees(nTreesTotal, dim);
+        }
+        //std::cout << "3" << std::endl;
         return predictByBlocksOfTrees(pHostApp, nTreesTotal, dim, aClsCounters.get());
     }
     else
     {
-        return predictAllPointsByAllTrees(nTreesTotal);
+        //std::cout << "4" << std::endl;
+        /*std::cout << "nDataBlocks: " << dim.nDataBlocks << ", nRowsInBlock: " << dim.nRowsInBlock
+            << ", nRowsTotal" << dim.nRowsTotal << ", nTreeBlocks" << dim.nTreeBlocks << ", TreesInBlock" << dim.nTreesInBlock
+            << ", nTreesTotal" << dim.nTreesTotal << std::endl;*/
+        return predictAllPointsByAllTrees(nTreesTotal, dim);
     }
 }
 

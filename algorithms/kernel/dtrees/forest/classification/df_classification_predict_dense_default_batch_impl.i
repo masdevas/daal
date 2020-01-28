@@ -597,9 +597,9 @@ Status PredictClassificationTask<algorithmFPType, cpu>::predictAllPointsByAllTre
             daal::threader_for(dim.nDataBlocks, dim.nDataBlocks, [&](size_t iBlock) {
                 const size_t iStartRow      = iBlock * dim.nRowsInBlock;
                 const size_t nRowsToProcess = (iBlock == dim.nDataBlocks - 1) ? dim.nRowsTotal - iStartRow : dim.nRowsInBlock;
-                for (size_t iRow = 0; iRow < nRowsToProcess; ++iRow)
+                for (size_t iRow = iStartRow; iRow < iStartRow + nRowsToProcess; ++iRow)
                 {
-                    res[iRow] = algorithmFPType(getMaxClass(commonBufVal + iStartRow + iRow * _nClasses));
+                    res[iRow] = algorithmFPType(getMaxClass(commonBufVal + iRow * _nClasses));
                 }
             });
             // daal::threader_for(nRowsOfRes, nRowsOfRes, [&](size_t iRow) {

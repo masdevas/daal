@@ -283,6 +283,19 @@ public:
     */
     services::Status getStatus() const { return _status; }
 
+    void setNFeatures(size_t nFeatures)
+    {
+        if(!_model.get())
+        {
+            _status |= services::ErrorNullModel;
+            services::throwIfPossible(_status);
+        }
+        else
+        {
+            _model->setNFeatures(nFeatures);
+        }
+    }
+
 protected:
     ModelPtr _model;
     services::Status _status;

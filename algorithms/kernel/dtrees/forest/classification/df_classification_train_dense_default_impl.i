@@ -63,7 +63,7 @@ public:
     typedef DataHelper<algorithmFPType, ClassIndexType, cpu> super;
     typedef typename dtrees::internal::TreeImpClassification<> TreeType;
     typedef typename TreeType::NodeType NodeType;
-    typedef typename dtrees::internal::TVector<float, cpu, dtrees::internal::ScalableAllocator<cpu>> Histogramm;
+    typedef typename dtrees::internal::TVector<size_t, cpu, dtrees::internal::ScalableAllocator<cpu>> Histogramm;
 
     struct ImpurityData
     {

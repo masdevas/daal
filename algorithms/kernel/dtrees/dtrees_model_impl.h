@@ -133,11 +133,11 @@ template <typename TResponseType>
 struct TreeNodeLeaf: public TreeNodeBase
 {
     TResponseType response;
-    double* hist;
+    size_t* hist;
 
     TreeNodeLeaf() {}
 
-    TreeNodeLeaf(double* memoryForHist) : hist(memoryForHist) {}
+    TreeNodeLeaf(size_t* memoryForHist) : hist(memoryForHist) {}
 
     virtual ~TreeNodeLeaf() {}
 
@@ -229,8 +229,8 @@ private:
 template <typename NodeType>
 typename NodeType::Leaf* ChunkAllocator<NodeType>::allocLeaf(size_t nClasses)
 {
-    void* memory = _man.alloc(sizeof(typename NodeType::Leaf) + nClasses * sizeof(double));
-    return new (memory) typename NodeType::Leaf(reinterpret_cast<double*>(
+    void* memory = _man.alloc(sizeof(typename NodeType::Leaf) + nClasses * sizeof(size_t));
+    return new (memory) typename NodeType::Leaf(reinterpret_cast<size_t*>(
         static_cast<typename NodeType::Leaf*>(memory) + 1));
 }
 
@@ -300,7 +300,7 @@ public:
         data_management::HomogenNumericTable<int> *nNodeSamples, data_management::HomogenNumericTable<double> *prob, size_t nClasses) const;
 
 private:
-    static const size_t _cNumNodesHint = 8 * 1024; //number of nodes as a hint for allocator to grow by
+    static const size_t _cNumNodesHint = 512; //number of nodes as a hint for allocator to grow by
     Allocator _allocator;
     typename NodeType::Base* _top;
     bool _hasUnorderedFeatureSplits;

@@ -300,7 +300,7 @@ public:
         data_management::HomogenNumericTable<int> *nNodeSamples, data_management::HomogenNumericTable<double> *prob, size_t nClasses) const;
 
 private:
-    static const size_t _cNumNodesHint = 512; //number of nodes as a hint for allocator to grow by
+    static const size_t _cNumNodesHint = 8 * 1024; //number of nodes as a hint for allocator to grow by
     Allocator _allocator;
     typename NodeType::Base* _top;
     bool _hasUnorderedFeatureSplits;

@@ -376,17 +376,19 @@ public:
     services::Status run(engines::internal::BatchBaseImpl* engineImpl, dtrees::internal::Tree*& pTree, size_t &numElems);
 
 protected:
+    typedef dtrees::internal::HistAllocator<float, cpu> DecisionForestHistAllocator;
     typedef dtrees::internal::TVector<algorithmFPType, cpu> algorithmFPTypeArray;
     typedef dtrees::internal::TVector<IndexType, cpu> IndexTypeArray;
     TrainBatchTaskBase(HostAppIface* hostApp, const NumericTable *x, const NumericTable *y, const Parameter& par,
         const dtrees::internal::FeatureTypes& featTypes,
         const dtrees::internal::IndexedFeatures* indexedFeatures,
-        ThreadCtxType& threadCtx, size_t nClasses):
+        ThreadCtxType& threadCtx, size_t nClasses, size_t defaultAllocatorReserveSize = 16 * 512 * 128):
+        _allocator(defaultAllocatorReserveSize),
         _hostApp(hostApp, 0), //set granularity later
         _data(x), _resp(y), _par(par), _nClasses(nClasses),
         _nSamples(par.observationsPerTreeFraction*x->getNumberOfRows()),
         _nFeaturesPerNode(par.featuresPerNode),
-        _helper(indexedFeatures, nClasses),
+        _helper(indexedFeatures, nClasses, &_allocator),
         _impurityThreshold(_par.impurityThreshold),
         _nFeatureBufs(1), //for sequential processing
         _featHelper(featTypes),
@@ -464,6 +466,7 @@ protected:
     }
 
 protected:
+    DecisionForestHistAllocator _allocator;
     TArray<IndexType, cpu> _aFeatureIdx; //indices of features to be used for the soplit at the current level
     DataHelper _helper;
     services::internal::HostAppHelper _hostApp;
@@ -532,14 +535,17 @@ services::Status TrainBatchTaskBase<algorithmFPType, DataHelper, cpu>::run(engin
     DAAL_CHECK_MALLOC(_helper.init(_data, _resp, _aSample.get()));
 
     //use _aSample as an array of response indices stored by helper from now on
-    PRAGMA_IVDEP
-    PRAGMA_VECTOR_ALWAYS
-    for(size_t i = 0; i < _aSample.size(); ++i)
-        _aSample[i] = i;
+    if(_par.bootstrap)
+    {
+        PRAGMA_IVDEP
+        PRAGMA_VECTOR_ALWAYS
+        for(size_t i = 0; i < _aSample.size(); ++i)
+            _aSample[i] = i;
+    }
 
     setupHostApp();
 
-    typename DataHelper::ImpurityData initialImpurity;
+    typename DataHelper::ImpurityData initialImpurity(&_allocator);
     _helper.calcImpurity(_aSample.get(), _nSamples, initialImpurity);
     bool bUnorderedFeaturesUsed = false;
     services::Status s;
@@ -590,7 +596,7 @@ typename DataHelper::NodeType::Base* TrainBatchTaskBase<algorithmFPType, DataHel
     if(terminateCriteria(n, level, curImpurity))
         return makeLeaf(_aSample.get() + iStart, n, curImpurity, nClasses);
 
-    typename DataHelper::TSplitData split;
+    typename DataHelper::TSplitData split(&_allocator);
     IndexType iFeature;
     if(findBestSplit(iStart, n, curImpurity, iFeature, split))
     {
@@ -671,7 +677,7 @@ bool TrainBatchTaskBase<algorithmFPType, DataHelper, cpu>::findBestSplitSerial(s
     IndexType* aIdx = _aSample.get() + iStart;
     int iBestSplit = -1;
     int idxFeatureValueBestSplit = -1; //when sorted feature is used
-    typename DataHelper::TSplitData split;
+    typename DataHelper::TSplitData split(&_allocator);
     const float fact = float(n);
     for(size_t i = 0; i < _nFeaturesPerNode; ++i)
     {
@@ -756,7 +762,6 @@ bool TrainBatchTaskBase<algorithmFPType, DataHelper, cpu>::findBestSplitThreaded
     const typename DataHelper::ImpurityData& curImpurity, IndexType& iFeatureBest, typename DataHelper::TSplitData& split)
 {
     chooseFeatures();
-    TArray<typename DataHelper::TSplitData, cpu> aFeatureSplit(_nFeaturesPerNode);
     //TODO, if parallel for features
     return false;
 }

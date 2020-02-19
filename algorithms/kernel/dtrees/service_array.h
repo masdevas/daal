@@ -44,6 +44,14 @@ public:
 };
 
 template <CpuType cpu>
+class DefaultStatefulAllocator
+{
+public:
+    void* alloc(size_t nBytes) { return services::daal_calloc(nBytes); }
+    void free(void* ptr) { services::daal_free(ptr); }
+};
+
+template <CpuType cpu>
 class ScalableAllocator
 {
 public:
@@ -176,6 +184,141 @@ private:
     }
 
 private:
+    T* _data;
+    size_t _size;
+};
+
+template<typename T, CpuType cpu, typename Allocator = DefaultStatefulAllocator<cpu>>
+class TStatefulAllocatorVector
+{
+public:
+    DAAL_NEW_DELETE();
+    TStatefulAllocatorVector(size_t n = 0, Allocator allocator = Allocator()) : _allocator(allocator), _data(nullptr), _size(0)
+    {
+        if(n) alloc(n);
+    }
+    TStatefulAllocatorVector(size_t n, T val, Allocator allocator = Allocator()) : _allocator(allocator), _data(nullptr), _size(0)
+    {
+        if(n)
+        {
+            alloc(n);
+            for(size_t i = 0; i < n; ++i)
+                _data[i] = val;
+        }
+    }
+    ~TStatefulAllocatorVector() { destroy(); }
+    TStatefulAllocatorVector(const TStatefulAllocatorVector& o) : _allocator(o._allocator), _data(nullptr), _size(0)
+    {
+        if(o._size)
+        {
+            alloc(o._size);
+            for(size_t i = 0; i < _size; ++i)
+                _data[i] = o._data[i];
+        }
+    }
+
+    TStatefulAllocatorVector& operator=(const TStatefulAllocatorVector& o)
+    {
+        _allocator = o._allocator;
+        if(this != &o)
+        {
+            if(_size < o._size)
+            {
+                destroy();
+                alloc(o._size);
+            }
+            for(size_t i = 0; i < _size; ++i)
+                _data[i] = o._data[i];
+        }
+        return *this;
+    }
+
+    size_t size() const { return _size; }
+
+    void setValues(size_t n, T val)
+    {
+        DAAL_ASSERT(n <= size());
+        PRAGMA_IVDEP
+        PRAGMA_VECTOR_ALWAYS
+        for(size_t i = 0; i < n; ++i)
+            _data[i] = val;
+    }
+
+    void setAll(T val)
+    {
+        PRAGMA_IVDEP
+        PRAGMA_VECTOR_ALWAYS
+        for(size_t i = 0; i < _size; ++i)
+            _data[i] = val;
+    }
+
+    void pushBack(T val)
+    {
+        resize(_size+1);
+        _data[_size-1] = val;
+    }
+
+    void resize(size_t n)
+    {
+        T* ptr = (T*)_allocator.alloc((n)*sizeof(T));
+        PRAGMA_VECTOR_ALWAYS
+        for(size_t i = 0; i < (_size>n ? n : _size); ++i)
+            ptr[i] = _data[i];
+        allocator.free(_data);
+        _data = ptr;
+        _size = n;
+    }
+
+    void reset(size_t n)
+    {
+        if(n != _size)
+        {
+            destroy();
+            alloc(n);
+        }
+    }
+
+    void resize(size_t n, T val)
+    {
+        reset(n);
+        setAll(val);
+    }
+
+    T &operator [] (size_t index)
+    {
+        DAAL_ASSERT(index < size());
+        return _data[index];
+    }
+
+    const T &operator [] (size_t index) const
+    {
+        DAAL_ASSERT(index < size());
+        return _data[index];
+    }
+    T* detach() { auto res = _data; _data = nullptr; _size = 0;  return res; }
+    T* get() { return _data; }
+    const T* get() const { return _data; }
+
+private:
+    void alloc(size_t n)
+    {
+        _data = (T*)(n ? _allocator.alloc(n * sizeof(T)) : nullptr);
+        if(_data)
+            _size = n;
+    }
+
+    void destroy()
+    {
+        if(_data)
+        {
+            _allocator.free(_data);
+            _data = nullptr;
+            _size = 0;
+        }
+    }
+
+private:
+    Allocator _allocator;
     T* _data;
     size_t _size;
 };

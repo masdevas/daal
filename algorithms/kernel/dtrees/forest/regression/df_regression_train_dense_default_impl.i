@@ -89,17 +89,19 @@ public:
     typedef DataHelper<algorithmFPType, algorithmFPType, cpu> super;
     typedef dtrees::internal::TreeImpRegression<> TreeType;
     typedef typename TreeType::NodeType NodeType;
+    typedef dtrees::internal::HistAllocator<float, cpu> DecisionForestHistAllocator;
 
     struct ImpurityData
     {
+        ImpurityData(DecisionForestHistAllocator* dummy = nullptr) {}
         algorithmFPType var; //impurity is a variance
         algorithmFPType mean;
         algorithmFPType value() const { return var; }
     };
-    typedef SplitData<algorithmFPType, ImpurityData> TSplitData;
+    typedef SplitDataForest<algorithmFPType, ImpurityData, DecisionForestHistAllocator> TSplitData;
 
 public:
-    OrderedRespHelper(const dtrees::internal::IndexedFeatures* indexedFeatures, size_t dummy) : super(indexedFeatures){}
+    OrderedRespHelper(const dtrees::internal::IndexedFeatures* indexedFeatures, size_t dummy, DecisionForestHistAllocator* dummyAllocator) : super(indexedFeatures){}
     virtual bool init(const NumericTable* data, const NumericTable* resp, const IndexType* aSample) DAAL_C11_OVERRIDE;
     void convertLeftImpToRight(size_t n, const ImpurityData& total, TSplitData& split)
     {

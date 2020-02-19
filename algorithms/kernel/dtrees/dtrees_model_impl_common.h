@@ -62,9 +62,12 @@ void nodeToTable(const NodeBase& node, size_t iRow, size_t& iCur, DecisionTreeNo
         const typename NodeType::Leaf& l = *NodeType::castLeaf(&node);
         if (nClasses > 1)
         {
+            double inversedCount = double(1) / double(node.count);
+            PRAGMA_IVDEP
+            PRAGMA_VECTOR_ALWAYS
             for (size_t i = 0; i < nClasses; ++i)
             {
-                probVals[iRow * nClasses + i] = double(l.hist[i]) / double(node.count);
+                probVals[iRow * nClasses + i] = double(l.hist[i]) * inversedCount;
             }
         }
         row.featureIndex = -1;

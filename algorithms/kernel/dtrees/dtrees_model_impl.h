@@ -210,6 +210,27 @@ private:
     int _iCurChunk;     //index of the current chunk to allocate from
 };
 
+template <typename Type, CpuType cpu>
+class HistAllocator
+{
+public:
+    HistAllocator(size_t defaultSize = 16 * 512) : _man(new MemoryManager(defaultSize * sizeof(Type))) {}
+    Type* alloc(size_t size);
+    void free(Type* ptr);
+
+private:
+    services::SharedPtr<MemoryManager> _man;
+};
+
+template <typename Type, CpuType cpu>
+Type* HistAllocator<Type, cpu>::alloc(size_t size)
+{
+    return reinterpret_cast<Type*>(_man->alloc(size * sizeof(Type)));
+}
+
+template <typename Type, CpuType cpu>
+void HistAllocator<Type, cpu>::free(Type* ptr) {}
+
 template <typename NodeType>
 class ChunkAllocator
 {
@@ -300,7 +321,7 @@ public:
         data_management::HomogenNumericTable<int> *nNodeSamples, data_management::HomogenNumericTable<double> *prob, size_t nClasses) const;
 
 private:
-    static const size_t _cNumNodesHint = 512; //number of nodes as a hint for allocator to grow by
+    static const size_t _cNumNodesHint = 16 * 512; //number of nodes as a hint for allocator to grow by
     Allocator _allocator;
     typename NodeType::Base* _top;
     bool _hasUnorderedFeatureSplits;

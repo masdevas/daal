@@ -63,23 +63,25 @@ public:
     typedef DataHelper<algorithmFPType, ClassIndexType, cpu> super;
     typedef typename dtrees::internal::TreeImpClassification<> TreeType;
     typedef typename TreeType::NodeType NodeType;
-    typedef typename dtrees::internal::TVector<float, cpu, dtrees::internal::ScalableAllocator<cpu>> Histogramm;
+    typedef dtrees::internal::HistAllocator<float, cpu> DecisionForestHistAllocator;
+    typedef typename dtrees::internal::TStatefulAllocatorVector<float, cpu, DecisionForestHistAllocator> Histogramm;
 
     struct ImpurityData
     {
         algorithmFPType var; //impurity is a variance
         Histogramm      hist;
 
-        ImpurityData(){}
-        ImpurityData(size_t nClasses) : hist(nClasses), var(0) {}
+        ImpurityData(DecisionForestHistAllocator* allocator) : hist(0, *allocator) {}
+        ImpurityData(size_t nClasses, DecisionForestHistAllocator* allocator) : hist(nClasses, *allocator), var(0) {}
         algorithmFPType value() const { return var; }
         void init(size_t nClasses) { var = 0; hist.resize(nClasses, 0); }
     };
-    typedef SplitData<algorithmFPType, ImpurityData> TSplitData;
+    typedef SplitDataForest<algorithmFPType, ImpurityData, DecisionForestHistAllocator> TSplitData;
 
 public:
-    UnorderedRespHelper(const dtrees::internal::IndexedFeatures* indexedFeatures, size_t nClasses) :
-        super(indexedFeatures), _nClasses(nClasses), _histLeft(nClasses), _impLeft(nClasses), _impRight(nClasses){}
+    UnorderedRespHelper(const dtrees::internal::IndexedFeatures* indexedFeatures, size_t nClasses, DecisionForestHistAllocator* allocator) :
+        super(indexedFeatures), _nClasses(nClasses), _histLeft(nClasses, *allocator), _impLeft(nClasses, allocator),
+        _impRight(nClasses, allocator), _allocator(allocator) {}
     virtual bool init(const NumericTable* data, const NumericTable* resp, const IndexType* aSample) DAAL_C11_OVERRIDE;
     void convertLeftImpToRight(size_t n, const ImpurityData& total, TSplitData& split)
     {
@@ -231,6 +233,7 @@ private:
     //work variables used in memory saving mode only
     mutable ImpurityData _impLeft;
     mutable ImpurityData _impRight;
+    DecisionForestHistAllocator* _allocator;
 };
 
 #ifdef DEBUG_CHECK_IMPURITY

@@ -103,6 +103,30 @@ void shuffle(void* state, size_t n, IndexType* dst, int* auxBuf)
 //////////////////////////////////////////////////////////////////////////////////////////
 // Service structure, keeps response-dependent split data
 //////////////////////////////////////////////////////////////////////////////////////////
+template <typename algorithmFPType, typename TImpurityData, typename Allocator>
+struct SplitDataForest
+{
+    TImpurityData left;
+    algorithmFPType featureValue;
+    algorithmFPType impurityDecrease;
+    size_t nLeft;
+    size_t iStart;
+    bool featureUnordered;
+    SplitDataForest(Allocator* allocator) : left(allocator), impurityDecrease(-daal::services::internal::MaxVal<algorithmFPType>::get()) {}
+    SplitDataForest(Allocator* allocator, algorithmFPType impDecr, bool bFeatureUnordered) :
+        left(allocator), impurityDecrease(impDecr), featureUnordered(bFeatureUnordered) {}
+    SplitDataForest(const SplitDataForest& o) = delete;
+    void copyTo(SplitDataForest& o) const
+    {
+        o.featureValue = featureValue;
+        o.nLeft = nLeft;
+        o.iStart = iStart;
+        o.left = left;
+        o.featureUnordered = featureUnordered;
+        o.impurityDecrease = impurityDecrease;
+    }
+};
+
 template <typename algorithmFPType, typename TImpurityData>
 struct SplitData
 {

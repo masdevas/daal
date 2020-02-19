@@ -22,6 +22,7 @@
 */
 
 #include "dtrees_model_impl.h"
+#include <iostream>
 
 using namespace daal::data_management;
 using namespace daal::services;
@@ -109,7 +110,7 @@ void MemoryManager::destroy()
 {
     for(size_t i = 0; i < _aChunk.size(); ++i)
     {
-        daal_free(_aChunk[i]);
+        services::internal::service_scalable_free<byte, sse2>(_aChunk[i]);
         _aChunk[i] = nullptr;
     }
     _aChunk.clear();
@@ -128,11 +129,12 @@ void* MemoryManager::alloc(size_t nBytes)
     }
     else
     {
+        //std::cout << "NEW ALLOC" << std::endl;
         if(!_aChunk.size() || _iCurChunk + 1 >= _aChunk.size())
         {
             //allocate a new chunk
             DAAL_ASSERT(_aChunk.size() ? _iCurChunk >= 0 : _iCurChunk < 0);
-            byte* ptr = (byte*)services::daal_calloc(_chunkSize);
+            byte* ptr = (byte*)services::internal::service_scalable_malloc<byte, sse2>(_chunkSize);
             if(!ptr)
                 return nullptr;
             _aChunk.push_back(ptr);

@@ -30,6 +30,7 @@
 #include "df_classification_model_impl.h"
 #include "dtrees_predict_dense_default_impl.i"
 #include "df_classification_training_types_result.h"
+#include <iostream>
 
 #define OOBClassificationData size_t
 
@@ -101,6 +102,10 @@ public:
     }
 
     int findBestSplitForFeatureSorted(algorithmFPType* featureBuf, IndexType iFeature, const IndexType* aIdx,
+        size_t n, size_t nMinSplitPart, const ImpurityData& curImpurity, TSplitData& split) const;
+    void A(algorithmFPType* featureBuf, IndexType iFeature, const IndexType* aIdx,
+        size_t n, size_t nMinSplitPart, const ImpurityData& curImpurity, TSplitData& split) const;
+    int B(algorithmFPType* featureBuf, IndexType iFeature, const IndexType* aIdx,
         size_t n, size_t nMinSplitPart, const ImpurityData& curImpurity, TSplitData& split) const;
     void finalizeBestSplit(const IndexType* aIdx, size_t n, IndexType iFeature,
         size_t idxFeatureValueBestSplit, TSplitData& bestSplit, IndexType* bestSplitIdx) const;
@@ -478,6 +483,7 @@ int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(alg
     const IndexType* aIdx, size_t n, size_t nMinSplitPart,
     const ImpurityData& curImpurity, TSplitData& split) const
 {
+    std::cout << "2 from 3" << std::endl;
     const auto nDiffFeatMax = this->indexedFeatures().numIndices(iFeature);
     _idxFeatureBuf.setValues(nDiffFeatMax, algorithmFPType(0));
     _samplesPerClassBuf.setValues(nClasses()*nDiffFeatMax, 0);
@@ -498,6 +504,7 @@ int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(alg
     auto histLeft = _histLeft.get();
     size_t nLeft = 0;
     int idxFeatureBestSplit = -1; //index of best feature value in the array of sorted feature values
+    //std::cout << "nDiffFeatMax" << std::endl;
     for(size_t i = 0; i < nDiffFeatMax; ++i)
     {
         if(!nFeatIdx[i])
@@ -573,8 +580,9 @@ void UnorderedRespHelper<algorithmFPType, cpu>::finalizeBestSplit(const IndexTyp
     bestSplit.featureValue = this->getValue(iFeature, iRowSplitVal);
 }
 #else
+
 template <typename algorithmFPType, CpuType cpu>
-int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(algorithmFPType* featureBuf, IndexType iFeature,
+void UnorderedRespHelper<algorithmFPType, cpu>::A(algorithmFPType* featureBuf, IndexType iFeature,
     const IndexType* aIdx, size_t n, size_t nMinSplitPart,
     const ImpurityData& curImpurity, TSplitData& split) const
 {
@@ -590,22 +598,155 @@ int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(alg
         //direct access to sorted features data in order to facilitate vectorization
         const IndexedFeatures::IndexType* indexedFeature = this->indexedFeatures().data(iFeature);
         const auto aResponse = this->_aResponse.get();
-        PRAGMA_VECTOR_ALWAYS
-        for(size_t i = 0; i < n; ++i)
+        //std::cout << "N :" << n << ", " << _idxFeatureBuf.size() << ", " << _samplesPerClassBuf.size() << std::endl;
+        #define LOCAL_GRAIN_SIZE 50
+        if (n < LOCAL_GRAIN_SIZE)
         {
-            const IndexType iSample = aIdx[i];
-            const auto& r = aResponse[aIdx[i]];
-            const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
-            ++nFeatIdx[idx];
-            const ClassIndexType iClass = r.val;
-            ++nSamplesPerClass[idx*_nClasses + iClass];
+            PRAGMA_VECTOR_ALWAYS
+            for(size_t i = 0; i < n; ++i)
+            {
+                const IndexType iSample = aIdx[i];
+                const auto& r = aResponse[aIdx[i]];
+                const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
+                ++nFeatIdx[idx];
+                const ClassIndexType iClass = r.val;
+                ++nSamplesPerClass[idx * _nClasses + iClass];
+            }
+            // std::cout << std::endl << "SUM: " << std::endl;
+            // for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+            // {
+            //     std::cout << nFeatIdx[index] << ' ';
+            // }
+            // std::cout << std::endl << "-----------------------------------------------------------------" << std::endl;
+            // // ******* //
+            // for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+            // {
+            //     std::cout << nSamplesPerClass[index] << ' ';
+            // }
+            // std::cout << std::endl << "=================================================================" << std::endl << std::endl;
         }
+        else
+        {
+            // struct LocalStruct
+            // {
+            //     IndexType idx;
+            //     float samplesPerClass;
+            // };
+            TlsMem<IndexType,cpu,services::internal::ScalableCalloc<IndexType, cpu>>
+                tlsDataFeatureBuf(_idxFeatureBuf.size());
+            TlsMem<float,cpu,services::internal::ScalableCalloc<float, cpu>>
+                tlsDataSamplesPerClass(_samplesPerClassBuf.size());
+            size_t numberOfBlocks = n / LOCAL_GRAIN_SIZE;
+            threader_for(numberOfBlocks, numberOfBlocks, [&](const size_t indexOfBlock)
+            //for (size_t indexOfBlock = 0; indexOfBlock < numberOfBlocks; ++indexOfBlock)
+            {
+                auto localDataFeatureBuf = tlsDataFeatureBuf.local();
+                auto localDataSamplesPerClass = tlsDataSamplesPerClass.local();
+                for (size_t localIndex = 0; localIndex < LOCAL_GRAIN_SIZE; ++localIndex)
+                {
+                    const size_t i = indexOfBlock * LOCAL_GRAIN_SIZE + localIndex;
+                    const IndexType iSample = aIdx[i];
+                    const auto& r = aResponse[aIdx[i]];
+                    const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
+                    ++localDataFeatureBuf[idx];
+                    const ClassIndexType iClass = r.val;
+                    ++localDataSamplesPerClass[idx * _nClasses + iClass];
+                }
+                // std::cout << "BlockNumber: " << indexOfBlock << std::endl;
+                // for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+                // {
+                //     std::cout << localDataFeatureBuf[index] << ' ';
+                // }
+                // std::cout << std::endl << "-----------------------------------------------------------------" << std::endl;
+                // // ******* //
+                // for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+                // {
+                //     std::cout << localDataSamplesPerClass[index] << ' ';
+                // }
+                // std::cout << std::endl << "=================================================================" << std::endl;
+            });
+            tlsDataFeatureBuf.reduce([&](IndexType* local)
+            {
+                PRAGMA_IVDEP
+                PRAGMA_VECTOR_ALWAYS
+                for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+                {
+                    nFeatIdx[index] += local[index];
+                }
+            });
+            tlsDataSamplesPerClass.reduce([&](float* local)
+            {
+                PRAGMA_IVDEP
+                PRAGMA_VECTOR_ALWAYS
+                for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+                {
+                    nSamplesPerClass[index] += local[index];
+                }
+            });
+
+            TlsMem<IndexType,cpu,services::internal::ScalableCalloc<IndexType, cpu>>
+                debugA(_idxFeatureBuf.size());
+            TlsMem<float,cpu,services::internal::ScalableCalloc<float, cpu>>
+                debugB(_samplesPerClassBuf.size());
+            auto debugAData = debugA.local();
+            auto debugBData = debugB.local();
+            PRAGMA_VECTOR_ALWAYS
+            for(size_t i = LOCAL_GRAIN_SIZE * numberOfBlocks; i < n; ++i)
+            {
+                const IndexType iSample = aIdx[i];
+                const auto& r = aResponse[aIdx[i]];
+                const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
+                ++nFeatIdx[idx];
+                ++debugAData[idx];
+                const ClassIndexType iClass = r.val;
+                ++nSamplesPerClass[idx*_nClasses + iClass];
+                ++debugBData[idx*_nClasses + iClass];
+            }
+            // std::cout << "DEBUG: " << std::endl;
+            // for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+            // {
+            //     std::cout << debugAData[index] << ' ';
+            // }
+            // std::cout << std::endl << "-----------------------------------------------------------------" << std::endl;
+            // // ******* //
+            // for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+            // {
+            //     std::cout << debugBData[index] << ' ';
+            // }
+            // std::cout << std::endl << "=================================================================" << std::endl;
+            // std::cout << std::endl << "SUM: " << std::endl;
+            // for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+            // {
+            //     std::cout << nFeatIdx[index] << ' ';
+            // }
+            // std::cout << std::endl << "-----------------------------------------------------------------" << std::endl;
+            // // ******* //
+            // for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+            // {
+            //     std::cout << nSamplesPerClass[index] << ' ';
+            // }
+            // std::cout << std::endl << "=================================================================" << std::endl << std::endl;
+        }
+        #undef LOCAL_GRAIN_SIZE
     }
+}
+
+template <typename algorithmFPType, CpuType cpu>
+int UnorderedRespHelper<algorithmFPType, cpu>::B(algorithmFPType* featureBuf, IndexType iFeature,
+    const IndexType* aIdx, size_t n, size_t nMinSplitPart,
+    const ImpurityData& curImpurity, TSplitData& split) const
+{
+    const auto nDiffFeatMax = this->indexedFeatures().numIndices(iFeature);
+    algorithmFPType bestImpDecrease = split.impurityDecrease < 0 ? split.impurityDecrease :
+        algorithmFPType(n)*(split.impurityDecrease + algorithmFPType(1.) - curImpurity.var);
+    auto nFeatIdx = _idxFeatureBuf.get();
+    auto nSamplesPerClass = _samplesPerClassBuf.get();
     //init histogram for the left part
     _histLeft.setAll(0);
     auto histLeft = _histLeft.get();
     size_t nLeft = 0;
     int idxFeatureBestSplit = -1; //index of best feature value in the array of sorted feature values
+    //std::cout << "nDiffFeatMax :" << nDiffFeatMax << std::endl;
     for(size_t i = 0; i < nDiffFeatMax; ++i)
     {
         if(!nFeatIdx[i])
@@ -660,6 +801,45 @@ int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(alg
         split.impurityDecrease = curImpurity.var + bestImpDecrease / algorithmFPType(n) - algorithmFPType(1);
     }
     return idxFeatureBestSplit;
+}
+
+template <typename algorithmFPType, CpuType cpu>
+int UnorderedRespHelper<algorithmFPType, cpu>::findBestSplitForFeatureSorted(algorithmFPType* featureBuf, IndexType iFeature,
+    const IndexType* aIdx, size_t n, size_t nMinSplitPart,
+    const ImpurityData& curImpurity, TSplitData& split) const
+{
+        //std::cout << "3 from 3" << std::endl;
+    A(featureBuf, iFeature, aIdx, n, nMinSplitPart, curImpurity, split);
+
+    // const auto nDiffFeatMax = this->indexedFeatures().numIndices(iFeature);
+    // _idxFeatureBuf.setValues(nDiffFeatMax, algorithmFPType(0));
+    // _samplesPerClassBuf.setValues(nClasses()*nDiffFeatMax, 0);
+    // auto nFeatIdx = _idxFeatureBuf.get();
+    // auto nSamplesPerClass = _samplesPerClassBuf.get();
+
+    // algorithmFPType bestImpDecrease = split.impurityDecrease < 0 ? split.impurityDecrease :
+    //     algorithmFPType(n)*(split.impurityDecrease + algorithmFPType(1.) - curImpurity.var);
+    // {
+    //     //direct access to sorted features data in order to facilitate vectorization
+    //     const IndexedFeatures::IndexType* indexedFeature = this->indexedFeatures().data(iFeature);
+    //     const auto aResponse = this->_aResponse.get();
+    //     //std::cout << "N :" << n << std::endl;
+    //     //PRAGMA_VECTOR_ALWAYS
+    //     for(size_t i = 0; i < n; ++i)
+    //     //threader_for(n, n, [&](const size_t i)
+    //     {
+    //         const IndexType iSample = aIdx[i];
+    //         const auto& r = aResponse[aIdx[i]];
+    //         const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
+    //         ++nFeatIdx[idx];
+    //         const ClassIndexType iClass = r.val;
+    //         ++nSamplesPerClass[idx*_nClasses + iClass];
+    //     }
+    //     //);
+    // }
+
+
+    return B(featureBuf, iFeature, aIdx, n, nMinSplitPart, curImpurity, split);;
 }
 
 template <typename algorithmFPType, CpuType cpu>

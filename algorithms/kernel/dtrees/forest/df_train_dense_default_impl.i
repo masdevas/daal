@@ -307,21 +307,22 @@ services::Status computeImpl(HostAppIface* pHostApp, const NumericTable *x, cons
 
     daal::SafeStatus safeStat;
     daal::threader_for(par.nTrees, par.nTrees, [&](size_t i)
+    //for (size_t i = 0; i < par.nTrees; ++i)
     {
-        if(!safeStat.ok())
-            return;
+        //if(!safeStat.ok())
+        //    return;
         TaskType* task = tlsTask.local();
-        DAAL_CHECK_MALLOC_THR(task);
+        //DAAL_CHECK_MALLOC_THR(task);
         dtrees::internal::Tree* pTree = nullptr;
         numElems[i] = 0;
         auto engineImpl = dynamic_cast<engines::internal::BatchBaseImpl*>(engines[i].get());
-        DAAL_CHECK_THR(engineImpl, ErrorEngineNotSupported);
+        //DAAL_CHECK_THR(engineImpl, ErrorEngineNotSupported);
         services::Status s = task->run(engineImpl, pTree, numElems[i]);
         if(pTree)
         {
             md.add((typename ModelType::TreeType&)*pTree, nClasses);
         }
-        DAAL_CHECK_STATUS_THR(s);
+        //DAAL_CHECK_STATUS_THR(s);
     });
     s = safeStat.detach();
     const auto nRows = x->getNumberOfRows();

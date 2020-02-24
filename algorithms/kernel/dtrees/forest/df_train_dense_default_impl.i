@@ -31,6 +31,7 @@
 #include "engine_types_internal.h"
 #include "service_defines.h"
 #include "uniform_kernel.h"
+#include <iostream>
 
 using namespace daal::algorithms::dtrees::training::internal;
 
@@ -612,6 +613,7 @@ typename DataHelper::NodeType::Base* TrainBatchTaskBase<algorithmFPType, DataHel
         }
         bUnorderedFeaturesUsed |= split.featureUnordered;
         res->count = n;
+        //std::cout << nLeft << " : " << left->count << std::endl;
         DAAL_ASSERT(nLeft == left->count);
         DAAL_ASSERT(split.nLeft == right->count);
         return res;

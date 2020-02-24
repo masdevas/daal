@@ -304,7 +304,7 @@ protected:
     IndexType getObsIdx(size_t i) const { DAAL_ASSERT(i < _aResponse.size());  return _aResponse.get()[i].idx; }
 
 protected:
-    TArray<Response, cpu> _aResponse;
+    TVector<Response, cpu, ScalableAllocator<cpu>> _aResponse;
 };
 
 //partition given set of indices into the left and right parts

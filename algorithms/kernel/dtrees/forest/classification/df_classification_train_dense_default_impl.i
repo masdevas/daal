@@ -599,7 +599,7 @@ void UnorderedRespHelper<algorithmFPType, cpu>::A(algorithmFPType* featureBuf, I
         const IndexedFeatures::IndexType* indexedFeature = this->indexedFeatures().data(iFeature);
         const auto aResponse = this->_aResponse.get();
         //std::cout << "N :" << n << ", " << _idxFeatureBuf.size() << ", " << _samplesPerClassBuf.size() << std::endl;
-        #define LOCAL_GRAIN_SIZE 50
+        #define LOCAL_GRAIN_SIZE 64
         if (n < LOCAL_GRAIN_SIZE)
         {
             PRAGMA_VECTOR_ALWAYS
@@ -637,17 +637,19 @@ void UnorderedRespHelper<algorithmFPType, cpu>::A(algorithmFPType* featureBuf, I
             TlsMem<float,cpu,services::internal::ScalableCalloc<float, cpu>>
                 tlsDataSamplesPerClass(_samplesPerClassBuf.size());
             size_t numberOfBlocks = n / LOCAL_GRAIN_SIZE;
-            threader_for(numberOfBlocks, numberOfBlocks, [&](const size_t indexOfBlock)
+            auto localDataFeatureBuf = tlsDataFeatureBuf.local();
+            auto localDataSamplesPerClass = tlsDataSamplesPerClass.local();
+            threader_for(numberOfBlocks, numberOfBlocks, [=](const size_t indexOfBlock)
             //for (size_t indexOfBlock = 0; indexOfBlock < numberOfBlocks; ++indexOfBlock)
             {
-                auto localDataFeatureBuf = tlsDataFeatureBuf.local();
-                auto localDataSamplesPerClass = tlsDataSamplesPerClass.local();
                 for (size_t localIndex = 0; localIndex < LOCAL_GRAIN_SIZE; ++localIndex)
                 {
                     const size_t i = indexOfBlock * LOCAL_GRAIN_SIZE + localIndex;
                     const IndexType iSample = aIdx[i];
                     const auto& r = aResponse[aIdx[i]];
-                    const IndexedFeatures::IndexType idx = indexedFeature[r.idx];
+                    auto tmp = r.idx;
+                    //std::cout << indexedFeature << std::endl;
+                    const IndexedFeatures::IndexType idx = indexedFeature[tmp];
                     ++localDataFeatureBuf[idx];
                     const ClassIndexType iClass = r.val;
                     ++localDataSamplesPerClass[idx * _nClasses + iClass];
@@ -665,24 +667,37 @@ void UnorderedRespHelper<algorithmFPType, cpu>::A(algorithmFPType* featureBuf, I
                 // }
                 // std::cout << std::endl << "=================================================================" << std::endl;
             });
-            tlsDataFeatureBuf.reduce([&](IndexType* local)
+            // tlsDataFeatureBuf.reduce([&](IndexType* local)
+            // {
+            //     PRAGMA_IVDEP
+            //     PRAGMA_VECTOR_ALWAYS
+            //     for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
+            //     {
+            //         nFeatIdx[index] += local[index];
+            //     }
+            // });
+            // tlsDataSamplesPerClass.reduce([&](float* local)
+            // {
+            //     PRAGMA_IVDEP
+            //     PRAGMA_VECTOR_ALWAYS
+            //     for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
+            //     {
+            //         nSamplesPerClass[index] += local[index];
+            //     }
+            // });
+
+            PRAGMA_IVDEP
+            PRAGMA_VECTOR_ALWAYS
+            for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
             {
-                PRAGMA_IVDEP
-                PRAGMA_VECTOR_ALWAYS
-                for (size_t index = 0; index < _idxFeatureBuf.size(); ++index)
-                {
-                    nFeatIdx[index] += local[index];
-                }
-            });
-            tlsDataSamplesPerClass.reduce([&](float* local)
+                nFeatIdx[index] += localDataFeatureBuf[index];
+            }
+            PRAGMA_IVDEP
+            PRAGMA_VECTOR_ALWAYS
+            for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
             {
-                PRAGMA_IVDEP
-                PRAGMA_VECTOR_ALWAYS
-                for (size_t index = 0; index < _samplesPerClassBuf.size(); ++index)
-                {
-                    nSamplesPerClass[index] += local[index];
-                }
-            });
+                nSamplesPerClass[index] += localDataSamplesPerClass[index];
+            }
 
             TlsMem<IndexType,cpu,services::internal::ScalableCalloc<IndexType, cpu>>
                 debugA(_idxFeatureBuf.size());

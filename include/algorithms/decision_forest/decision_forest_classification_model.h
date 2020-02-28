@@ -138,11 +138,20 @@ public:
 protected:
     Model() : classifier::Model() {}
 };
+/**
+ * <a name="DAAL-CLASS-ALGORITHMS__DECISION_FOREST__CLASSIFICATION__TEMPORARYTHING"></a>
+ * \brief %TemporaryThing for interesting thing.
+ */
+class TemporaryThing {
+
+};
 /** @} */
 typedef services::SharedPtr<Model> ModelPtr;
+
 } // namespace interface1
 using interface1::Model;
 using interface1::ModelPtr;
+using interface1::TemporaryThing;
 
 } // namespace classification
 } // namespace decision_forest

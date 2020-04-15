@@ -83,7 +83,7 @@
                             DAAL_KERNEL_AVX512_CONTAINER(ContainerTemplate, __VA_ARGS__)>::ClassName(daal::services::Environment::env * daalEnv)    \
         : BaseClassName(daalEnv), _cntr(nullptr)                                                                                                    \
     {                                                                                                                                               \
-        if (isIntel())                                                                                                                              \
+        if (daal::services::Environment::isIntel())                                                                                                                              \
         {                                                                                                                                           \
             switch (daalEnv->cpuid)                                                                                                                 \
             {                                                                                                                                       \
@@ -129,7 +129,7 @@
                             DAAL_KERNEL_AVX512_CONTAINER(ContainerTemplate, __VA_ARGS__)>::ClassName(daal::services::Environment::env * daalEnv)    \
         : BaseClassName(daalEnv), _cntr(nullptr)                                                                                                    \
     {                                                                                                                                               \
-        if (isIntel())                                                                                                                              \
+        if (daal::services::Environment::isIntel())                                                                                                                              \
         {                                                                                                                                           \
             switch (daalEnv->cpuid)                                                                                                                 \
             {                                                                                                                                       \

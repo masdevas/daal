@@ -44,13 +44,32 @@ void daal_free_buffers();
 }
 } // namespace daal
 
+void getCpuidInfo(daal::services::internal::CPUIDinfo * info, unsigned int eax, unsigned int ecx)
+{
+    #if defined(_MSC_VER)
+    __cpuidex((int *)info, eax, ecx);
+    #else
+    unsigned int ebx, edx;
+        #if defined(__i386__) && defined(__PIC__)
+    /* in case of PIC under 32-bit EBX cannot be clobbered */
+    __asm__("movl %%ebx, %%edi \n\t cpuid \n\t xchgl %%ebx, %%edi" : "=D"(ebx), "+a"(eax), "+c"(ecx), "=d"(edx));
+        #else
+    __asm__("cpuid" : "+b"(ebx), "+a"(eax), "+c"(ecx), "=d"(edx));
+        #endif
+    info->EAX = eax;
+    info->EBX = ebx;
+    info->ECX = ecx;
+    info->EDX = edx;
+    #endif
+}
+
 // Here is a section of sequences of chars "Genu", "ineI", "ntel" is interpreted like uint32 values
 #define DAAL_INTERNAL_GENU 0x756e6547
 #define DAAL_INTERNAL_INEI 0x49656e69
 #define DAAL_INTERNAL_NTEL 0x6c65746e
 DAAL_EXPORT bool daal::services::Environment::isIntel() {
-    internal::CPUIDinfo info{0, 0, 0, 0};
-    internal::__internal_daal_getCpuidInfo(&info, 0, 0);
+    daal::services::internal::CPUIDinfo info{0, 0, 0, 0};
+    getCpuidInfo(&info, 0, 0);
     return info.EBX == DAAL_INTERNAL_GENU &&
            info.ECX == DAAL_INTERNAL_INEI &&
            info.EDX == DAAL_INTERNAL_NTEL;

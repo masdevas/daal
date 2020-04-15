@@ -48,7 +48,6 @@ void daal_free_buffers();
 #define DAAL_INTERNAL_GENU 0x756e6547
 #define DAAL_INTERNAL_INEI 0x49656e69
 #define DAAL_INTERNAL_NTEL 0x6c65746e
-#error TMP_ERROR
 DAAL_EXPORT bool daal::services::Environment::isIntel() {
     internal::CPUIDinfo info{0, 0, 0, 0};
     internal::__internal_daal_getCpuidInfo(&info, 0, 0);

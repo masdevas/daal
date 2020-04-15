@@ -44,6 +44,22 @@ void daal_free_buffers();
 }
 } // namespace daal
 
+// Here is a section of sequences of chars "Genu", "ineI", "ntel" is interpreted like uint32 values
+#define DAAL_INTERNAL_GENU 0x756e6547
+#define DAAL_INTERNAL_INEI 0x49656e69
+#define DAAL_INTERNAL_NTEL 0x6c65746e
+#error TMP_ERROR
+DAAL_EXPORT bool daal::services::Environment::isIntel() {
+    internal::CPUIDinfo info{0, 0, 0, 0};
+    internal::__internal_daal_getCpuidInfo(&info, 0, 0);
+    return info.EBX == DAAL_INTERNAL_GENU &&
+           info.ECX == DAAL_INTERNAL_INEI &&
+           info.EDX == DAAL_INTERNAL_NTEL;
+}
+#undef DAAL_INTERNAL_GENU
+#undef DAAL_INTERNAL_INEI
+#undef DAAL_INTERNAL_NTEL
+
 DAAL_EXPORT daal::services::Environment * daal::services::Environment::getInstance()
 {
     static daal::services::Environment instance;

@@ -81,6 +81,8 @@ public:
      */
     static Environment * getInstance();
 
+    static bool isIntel();
+
     /**
      *  Decreases the instance counter
      *  \return The return code

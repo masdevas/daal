@@ -68,9 +68,9 @@ static void run_cpuid(uint32_t eax, uint32_t ecx, uint32_t * abcd)
 bool __daal_is_intel() {
     uint32_t abcd[4];
     run_cpuid(0, 0, abcd);
-    return abcd[1] == DAAL_INTERNAL_GENU &&
-        abcd[2] == DAAL_INTERNAL_INEI &&
-        abcd[3] == DAAL_INTERNAL_NTEL;
+    return abcd[1] == DAAL_INTERNAL_GENU &&     // eax
+        abcd[2] == DAAL_INTERNAL_NTEL &&        // ebx
+        abcd[3] == DAAL_INTERNAL_INEI;          // ecx
 }
 #undef DAAL_INTERNAL_GENU
 #undef DAAL_INTERNAL_INEI

@@ -45,7 +45,7 @@ void daal_free_buffers();
 } // namespace daal
 
 DAAL_EXPORT bool daal::services::Environment::isIntel() {
-    static bool result = __daal_is_intel();
+    static const bool result = __daal_is_intel();
     return result;
 }
 

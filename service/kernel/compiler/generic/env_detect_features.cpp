@@ -262,12 +262,12 @@ int __daal_serv_cpu_detect(int enable)
 #if defined(__APPLE__)
     __daal_serv_CPUHasAVX512f_enable_it_mac();
 #endif
-    if (check_avx512_features())
+    if (check_avx512_features() && daal::services::Environment::isIntel())
     {
         return daal::avx512;
     }
 
-    if (check_avx512_mic_features())
+    if (check_avx512_mic_features() && daal::services::Environment::isIntel())
     {
         return daal::avx512_mic;
     }

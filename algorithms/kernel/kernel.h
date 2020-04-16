@@ -66,7 +66,7 @@
 #define __DAAL_CALL_KERNEL_STATUS(env, KernelClass, templateArguments, method, ...) \
     ((KernelClass<templateArguments, cpu> *)(_kernel))->method(__VA_ARGS__);
 
-#define __DAAL_INSTANTIATE_DISPATCH_CPUID(ContainerTemplate, Mode, ClassName, BaseClassName, ...)                                                    \
+#define __DAAL_INSTANTIATE_DISPATCH_CPUID(ContainerTemplate, Mode, ClassName, BaseClassName, ...)                                                   \
     DAAL_KERNEL_SSE2_CONTAINER1(ContainerTemplate, __VA_ARGS__)                                                                                     \
     DAAL_KERNEL_SSSE3_CONTAINER1(ContainerTemplate, __VA_ARGS__)                                                                                    \
     DAAL_KERNEL_SSE42_CONTAINER1(ContainerTemplate, __VA_ARGS__)                                                                                    \
@@ -83,7 +83,7 @@
                             DAAL_KERNEL_AVX512_CONTAINER(ContainerTemplate, __VA_ARGS__)>::ClassName(daal::services::Environment::env * daalEnv)    \
         : BaseClassName(daalEnv), _cntr(nullptr)                                                                                                    \
     {                                                                                                                                               \
-        if (daal::services::Environment::isIntel())                                                                                                                              \
+        if (daal::services::Environment::isIntel())                                                                                                 \
         {                                                                                                                                           \
             switch (daalEnv->cpuid)                                                                                                                 \
             {                                                                                                                                       \

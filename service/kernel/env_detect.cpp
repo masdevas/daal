@@ -44,8 +44,9 @@ void daal_free_buffers();
 }
 } // namespace daal
 
-void getCpuidInfo(daal::services::internal::CPUIDinfo * info, unsigned int eax, unsigned int ecx)
+daal::services::internal::CPUIDinfo getCpuidInfo(unsigned int eax, unsigned int ecx)
 {
+    daal::services::internal::CPUIDinfo info{0, 0, 0, 0};
     #if defined(_MSC_VER)
     __cpuidex((int *)info, eax, ecx);
     #else
@@ -56,27 +57,33 @@ void getCpuidInfo(daal::services::internal::CPUIDinfo * info, unsigned int eax, 
         #else
     __asm__("cpuid" : "+b"(ebx), "+a"(eax), "+c"(ecx), "=d"(edx));
         #endif
-    info->EAX = eax;
-    info->EBX = ebx;
-    info->ECX = ecx;
-    info->EDX = edx;
+    info.EAX = eax;
+    info.EBX = ebx;
+    info.ECX = ecx;
+    info.EDX = edx;
     #endif
+    return info;
 }
 
 // Here is a section of sequences of chars "Genu", "ineI", "ntel" is interpreted like uint32 values
 #define DAAL_INTERNAL_GENU 0x756e6547
 #define DAAL_INTERNAL_INEI 0x49656e69
 #define DAAL_INTERNAL_NTEL 0x6c65746e
-DAAL_EXPORT bool daal::services::Environment::isIntel() {
-    daal::services::internal::CPUIDinfo info{0, 0, 0, 0};
-    getCpuidInfo(&info, 0, 0);
+DAAL_FORCEINLINE bool checkCpuidInfoForIntel(daal::services::internal::CPUIDinfo info) {
     return info.EBX == DAAL_INTERNAL_GENU &&
-           info.ECX == DAAL_INTERNAL_INEI &&
-           info.EDX == DAAL_INTERNAL_NTEL;
+        info.ECX == DAAL_INTERNAL_INEI &&
+        info.EDX == DAAL_INTERNAL_NTEL;
 }
 #undef DAAL_INTERNAL_GENU
 #undef DAAL_INTERNAL_INEI
 #undef DAAL_INTERNAL_NTEL
+
+DAAL_EXPORT bool daal::services::Environment::isIntel() {
+    static bool isCalculated = false;
+    static bool result = isCalculated ? result : checkCpuidInfoForIntel(getCpuidInfo(0, 0));
+    isCalculated = true;
+    return result;
+}
 
 DAAL_EXPORT daal::services::Environment * daal::services::Environment::getInstance()
 {

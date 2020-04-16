@@ -79,9 +79,7 @@ DAAL_FORCEINLINE bool checkCpuidInfoForIntel(daal::services::internal::CPUIDinfo
 #undef DAAL_INTERNAL_NTEL
 
 DAAL_EXPORT bool daal::services::Environment::isIntel() {
-    static bool isCalculated = false;
-    static bool result = isCalculated ? result : checkCpuidInfoForIntel(getCpuidInfo(0, 0));
-    isCalculated = true;
+    static bool result = checkCpuidInfoForIntel(getCpuidInfo(0, 0));
     return result;
 }
 

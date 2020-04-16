@@ -28,6 +28,7 @@
 #include "services/env_detect.h"
 
 int __daal_serv_cpu_detect(int);
+bool __daal_is_intel();
 
 #if defined(_MSC_VER) && !defined(__INTEL_COMPILER)
     #define PRAGMA_IVDEP

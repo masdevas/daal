@@ -61,6 +61,21 @@ static void run_cpuid(uint32_t eax, uint32_t ecx, uint32_t * abcd)
 #endif
 }
 
+// Here is a section of sequences of chars "Genu", "ineI", "ntel" is interpreted like uint32 values
+#define DAAL_INTERNAL_GENU 0x756e6547
+#define DAAL_INTERNAL_INEI 0x49656e69
+#define DAAL_INTERNAL_NTEL 0x6c65746e
+bool __daal_is_intel() {
+    uint32_t abcd[4];
+    run_cpuid(0, 0, abcd);
+    return abcd[1] == DAAL_INTERNAL_GENU &&
+        abcd[2] == DAAL_INTERNAL_INEI &&
+        abcd[3] == DAAL_INTERNAL_NTEL;
+}
+#undef DAAL_INTERNAL_GENU
+#undef DAAL_INTERNAL_INEI
+#undef DAAL_INTERNAL_NTEL
+
 static int check_cpuid(uint32_t eax, uint32_t ecx, int abcd_index, uint32_t mask)
 {
     uint32_t abcd[4];

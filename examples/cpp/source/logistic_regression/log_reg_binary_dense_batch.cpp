@@ -30,6 +30,11 @@
 
 #include "daal.h"
 #include "service.h"
+#include <iostream>
+#include <chrono>
+#include <stdio.h>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 using namespace daal;
@@ -48,6 +53,29 @@ const size_t nClasses = 2; /* Number of classes */
 training::ResultPtr trainModel();
 void testModel(const training::ResultPtr & res);
 void loadData(const std::string & fileName, NumericTablePtr & pData, NumericTablePtr & pDependentVar);
+
+template <typename Iterator>\
+float calculateAverage(Iterator begin, Iterator end)\
+{\
+float average = 0;\
+for (auto i = begin; i != end; ++i)\
+{\
+average += *i;\
+}\
+average /= std::distance(begin, end);\
+return average;\
+}\
+template <typename Iterator>\
+float calculateStandardDeviation(Iterator begin, Iterator end, float average)\
+{\
+float variance = 0;\
+for (auto i = begin; i != end; ++i)\
+{\
+variance += (average - *i) * (average - *i);\
+}\
+variance /= std::distance(begin, end) - 1;\
+return std::sqrt(variance);\
+}
 
 int main(int argc, char * argv[])
 {
@@ -99,6 +127,10 @@ void testModel(const training::ResultPtr & trainingResult)
 
     loadData(testDatasetFileName, testData, testGroundTruth);
 
+std::vector<float> v;   \
+for (size_t index = 0; index < 40; index++) { \
+auto start = std::chrono::high_resolution_clock::now();
+
     /* Create an algorithm object to predict values of logistic regression */
     prediction::Batch<> algorithm(nClasses);
 
@@ -109,10 +141,35 @@ void testModel(const training::ResultPtr & trainingResult)
     /* Predict values of logistic regression */
     algorithm.compute();
 
+ auto end = std::chrono::high_resolution_clock::now();\
+std::chrono::duration<double, std::milli> millis = end-start;\
+if (index > 4) {\
+v.push_back(millis.count());\
+std::cout << v.back() << std::endl;\
+}\
+}\
+auto average = calculateAverage(v.begin(), v.end());\
+auto standardDeviation = calculateStandardDeviation(v.begin(), v.end(), average);\
+std::vector<float> actualCases;\
+actualCases.reserve(v.size());\
+for (auto i = v.begin(); i != v.end(); ++i)\
+{\
+if (*i < average + 3 * standardDeviation && *i > average - 3 * standardDeviation)\
+{\
+actualCases.emplace_back(*i);\
+}\
+}\
+average = calculateAverage(actualCases.begin(), actualCases.end());\
+standardDeviation = calculateStandardDeviation(actualCases.begin(), actualCases.end(), average);\
+printf("%.10lf ; %.10lf\n", average, standardDeviation);\
+
+
     /* Retrieve the algorithm results */
     classifier::prediction::ResultPtr predictionResult = algorithm.getResult();
-    printNumericTable(predictionResult->get(classifier::prediction::prediction), "Logistic regression prediction results (first 10 rows):", 10);
-    printNumericTable(testGroundTruth, "Ground truth (first 10 rows):", 10);
+
+
+    // printNumericTable(predictionResult->get(classifier::prediction::prediction), "Logistic regression prediction results (first 10 rows):", 10);
+    // printNumericTable(testGroundTruth, "Ground truth (first 10 rows):", 10);
 }
 
 void loadData(const std::string & fileName, NumericTablePtr & pData, NumericTablePtr & pDependentVar)

@@ -30,6 +30,10 @@
 
 #include "daal.h"
 #include "service.h"
+#include <chrono>
+#include <stdio.h>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 using namespace daal;
@@ -53,6 +57,31 @@ void trainModel();
 void testModel();
 void printResults();
 
+
+template <typename Iterator>\
+float calculateAverage(Iterator begin, Iterator end)\
+{\
+float average = 0;\
+for (auto i = begin; i != end; ++i)\
+{\
+average += *i;\
+}\
+average /= std::distance(begin, end);\
+return average;\
+}\
+template <typename Iterator>\
+float calculateStandardDeviation(Iterator begin, Iterator end, float average)\
+{\
+float variance = 0;\
+for (auto i = begin; i != end; ++i)\
+{\
+variance += (average - *i) * (average - *i);\
+}\
+variance /= std::distance(begin, end) - 1;\
+return std::sqrt(variance);\
+}
+
+
 int main(int argc, char * argv[])
 {
     checkArguments(argc, argv, 2, &trainDatasetFileName, &testDatasetFileName);
@@ -61,7 +90,7 @@ int main(int argc, char * argv[])
 
     testModel();
 
-    printResults();
+    // printResults();
 
     return 0;
 }
@@ -106,6 +135,12 @@ void testModel()
     /* Retrieve the data from input file */
     testDataSource.loadDataBlock(mergedData.get());
 
+
+
+std::vector<float> v;   \
+for (size_t index = 0; index < 40; index++) { \
+auto start = std::chrono::high_resolution_clock::now();
+
     /* Create an algorithm object to predict Naive Bayes values */
     prediction::Batch<> algorithm(nClasses);
 
@@ -116,12 +151,35 @@ void testModel()
     /* Predict Naive Bayes values */
     algorithm.compute();
 
+ auto end = std::chrono::high_resolution_clock::now();\
+std::chrono::duration<double, std::milli> millis = end-start;\
+if (index > 4) {\
+v.push_back(millis.count());\
+std::cout << v.back() << std::endl;\
+}\
+}\
+auto average = calculateAverage(v.begin(), v.end());\
+auto standardDeviation = calculateStandardDeviation(v.begin(), v.end(), average);\
+std::vector<float> actualCases;\
+actualCases.reserve(v.size());\
+for (auto i = v.begin(); i != v.end(); ++i)\
+{\
+if (*i < average + 3 * standardDeviation && *i > average - 3 * standardDeviation)\
+{\
+actualCases.emplace_back(*i);\
+}\
+}\
+average = calculateAverage(actualCases.begin(), actualCases.end());\
+standardDeviation = calculateStandardDeviation(actualCases.begin(), actualCases.end(), average);\
+printf("%.10lf ; %.10lf\n", average, standardDeviation);\
+
+
     /* Retrieve the algorithm results */
-    predictionResult = algorithm.getResult();
+    //predictionResult = algorithm.getResult();
 }
 
-void printResults()
-{
-    printNumericTables<int, int>(testGroundTruth, predictionResult->get(classifier::prediction::prediction), "Ground truth", "Classification results",
-                                 "NaiveBayes classification results (first 20 observations):", 20);
-}
+// void printResults()
+// {
+//     printNumericTables<int, int>(testGroundTruth, predictionResult->get(classifier::prediction::prediction), "Ground truth", "Classification results",
+//                                  "NaiveBayes classification results (first 20 observations):", 20);
+// }

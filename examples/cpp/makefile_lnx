@@ -117,7 +117,7 @@ ifeq ($(compiler),gnu)
     CC = g++
     # Add extra flags to check if DAAL headers can be used in C++03 mode
     COPTS += $(if $(filter ia32, $(_IA)), -m32, -m64) \
-             -std=c++03 -Wno-variadic-macros -Wno-long-long
+             -std=c++11 -Wno-variadic-macros -Wno-long-long
 endif
 
 ifeq ($(compiler),clang)

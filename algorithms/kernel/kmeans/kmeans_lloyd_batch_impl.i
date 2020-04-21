@@ -117,6 +117,15 @@ Status KMeansBatchKernel<method, algorithmFPType, cpu>::compute(const NumericTab
     Status s;
     algorithmFPType oldTargetFunc(0.0);
     size_t kIter;
+    // int __n = p;
+    // int __k = nClusters;
+    //int __rows_fit_L2 = (131072 - (__n * __k)) / (__n + __k) * 0.7;
+    // std::cout << "PARAMS: " << __n << ' ' << __k << std::endl;
+    //std::cout << "R " << __rows_fit_L2 << std::endl;
+    // size_t blockSizeDeafult = 96;
+    // if (__rows_fit_L2 >= 96) {
+    //     blockSizeDeafult = int(__rows_fit_L2 / 16) * 16;
+    // }
     for (kIter = 0; kIter < nIter; kIter++)
     {
         SharedPtr<task_t<algorithmFPType, cpu> > task = task_t<algorithmFPType, cpu>::create(p, nClusters, inClusters);

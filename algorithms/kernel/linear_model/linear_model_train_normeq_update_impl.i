@@ -22,6 +22,7 @@
 */
 
 #include "algorithms/kernel/linear_model/linear_model_train_normeq_kernel.h"
+#include "algorithms/kernel/linear_model/linear_model_helper.h"
 #include "externals/service_blas.h"
 #include "algorithms/kernel/service_error_handling.h"
 #include "algorithms/threading/threading.h"
@@ -175,7 +176,8 @@ Status UpdateKernel<algorithmFPType, cpu>::compute(const NumericTable & xTable, 
     }
 
     /* Split rows by blocks */
-    size_t nRowsInBlock = 128;
+    using BSHelper = BSHelper<algorithmFPType, cpu>;
+    size_t nRowsInBlock = BSHelper::getBlockSize(nRows, nBetasIntercept, nResponses);
 
     size_t nBlocks = nRows / nRowsInBlock;
     if (nBlocks * nRowsInBlock < nRows)

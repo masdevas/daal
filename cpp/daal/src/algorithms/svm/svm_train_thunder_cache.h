@@ -31,6 +31,7 @@
 #include "src/algorithms/svm/svm_train_cache.h"
 #include "src/externals/service_service.h"
 #include "data_management/data/soa_numeric_table.h"
+#include "src/externals/service_ittnotify.h"
 
 namespace daal
 {
@@ -191,8 +192,10 @@ protected:
         kernel_function::ResultPtr shRes(new kernel_function::Result());
         shRes->set(kernel_function::values, kernelComputeTable);
         _kernel->setResult(shRes);
-        DAAL_CHECK_STATUS(status, _kernel->computeNoThrow());
-
+        {
+            DAAL_ITTNOTIFY_SCOPED_TASK(mySvmTrainKernelFunc);
+            DAAL_CHECK_STATUS(status, _kernel->computeNoThrow());
+        }
         return status;
     }
 

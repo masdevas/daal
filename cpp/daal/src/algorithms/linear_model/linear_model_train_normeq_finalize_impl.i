@@ -107,7 +107,7 @@ Status FinalizeKernel<algorithmFPType, cpu>::compute(const NumericTable & xtxTab
     DAAL_CHECK_BLOCK_STATUS(betaBlock);
     algorithmFPType * beta = betaBlock.get();
 
-    DAAL_ITTNOTIFY_SCOPED_TASK(computeFinalize.copyBetaToResult);
+    //DAAL_ITTNOTIFY_SCOPED_TASK(computeFinalize.copyBetaToResult);
     if (nBetasIntercept == nBetas)
     {
         for (size_t i = 0; i < nResponses; i++)

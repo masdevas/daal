@@ -29,6 +29,7 @@
 #include "src/externals/service_blas.h"
 #include "src/externals/service_memory.h"
 #include "src/services/service_environment.h"
+#include "src/externals/service_ittnotify.h"
 
 namespace daal
 {
@@ -70,7 +71,10 @@ public:
         _kernel->getInput()->set(kernel_function::Y, svBlockNT);
         _kernel->getParameter()->computationMode = kernel_function::matrixMatrix;
 
-        return _kernel->computeNoThrow();
+        {
+            DAAL_ITTNOTIFY_SCOPED_TASK(mySvmPredictKernelFunc);
+            return _kernel->computeNoThrow();
+        }
     }
 
     const algorithmFPType * getBuff() const { return _buff.get(); }

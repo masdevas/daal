@@ -95,6 +95,7 @@ private:
 
     #define DAAL_ITTNOTIFY_SCOPED_TASK(name)                                            \
         static daal::internal::ittnotify::StringHandle __ittnotify_stringhandle(#name); \
+        DAAL_ITTNOTIFY_DOMAIN(#name); \
         daal::internal::ittnotify::ScopedTask __ittnotify_task(__ittnotify_domain, __ittnotify_stringhandle)
 
 #else

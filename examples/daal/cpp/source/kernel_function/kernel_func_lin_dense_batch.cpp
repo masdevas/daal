@@ -35,8 +35,8 @@ using namespace daal::algorithms;
 using namespace daal::data_management;
 
 /* Input data set parameters */
-string leftDatasetFileName  = "../data/batch/kernel_function.csv";
-string rightDatasetFileName = "../data/batch/kernel_function.csv";
+string leftDatasetFileName  = "../data/batch/connect_x_train.csv";
+string rightDatasetFileName = "../data/batch/connect_x_train.csv";
 
 /* Kernel algorithm parameters */
 const double k = 1.0; /* Linear kernel coefficient in the k(X,Y) + b model */

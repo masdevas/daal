@@ -18,7 +18,7 @@
 ##     Intel(R) oneAPI Data Analytics Library examples list
 ##******************************************************************************
 
-DAAL  = svm_multi_class_thunder_csr_batch     \
-        svm_multi_class_thunder_dense_batch   \
-        svm_two_class_thunder_dense_batch     \
-        svm_two_class_thunder_csr_batch
+DAAL  = kernel_func_lin_dense_batch           \
+        kernel_func_lin_dense_batch_test      \
+        kernel_func_rbf_dense_batch           \
+        kernel_func_rbf_dense_batch_test

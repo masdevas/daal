@@ -102,7 +102,7 @@ DAAL_LIB := $(DAAL_PATH)/libonedal_core.$(RES_EXT) $(DAAL_LIB_T)
 COPTS := -pedantic -Wall -Wextra -Werror \
          -Wno-deprecated-declarations \
          -Wno-unused-parameter \
-         -I./source/utils
+         -I./source/utils -I$(DAALROOT)/../../../cpp/daal/
 
 LOPTS := -Wl,--start-group $(DAAL_LIB) $(EXT_LIB) -Wl,--end-group
 

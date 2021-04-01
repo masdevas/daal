@@ -28,6 +28,8 @@
 
 #include "daal.h"
 #include "service.h"
+#include "src/externals/service_ittnotify.h"
+#include "kernel_function_helper.h"
 
 using namespace std;
 using namespace daal;
@@ -43,6 +45,7 @@ const double sigma = 1.0; /* RBF kernel coefficient */
 
 int main(int argc, char * argv[])
 {
+    typedef float algorithmFPType;
     checkArguments(argc, argv, 1, &leftDatasetFileName);
     checkArguments(argc, argv, 1, &rightDatasetFileName);
 
@@ -56,24 +59,12 @@ int main(int argc, char * argv[])
     rightDataSource.loadDataBlock();
 
     /* Create algorithm objects for the kernel algorithm using the default method */
-    kernel_function::rbf::Batch<> algorithm;
+    kernel_function::rbf::Batch<algorithmFPType> algorithm;
 
     /* Set the kernel algorithm parameter */
     algorithm.parameter.sigma           = sigma;
     algorithm.parameter.computationMode = kernel_function::matrixMatrix;
 
-    /* Set an input data table for the algorithm */
-    algorithm.input.set(kernel_function::X, leftDataSource.getNumericTable());
-    algorithm.input.set(kernel_function::Y, rightDataSource.getNumericTable());
-
-    /* Compute the RBF kernel */
-    algorithm.compute();
-
-    /* Get the computed results */
-    kernel_function::ResultPtr result = algorithm.getResult();
-
-    /* Print the results */
-    printNumericTable(result->get(kernel_function::values), "Values");
-
+    DAAL_CHECK_STATUS_VAR((process_data_for_kernel_func<algorithmFPType, kernel_function::rbf::Batch<algorithmFPType> >(algorithm, leftDataSource, rightDataSource)));
     return 0;
 }

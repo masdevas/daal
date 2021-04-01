@@ -28,6 +28,8 @@
 
 #include "daal.h"
 #include "service.h"
+#include "src/externals/service_ittnotify.h"
+#include "kernel_function_helper.h"
 
 using namespace std;
 using namespace daal;
@@ -44,38 +46,27 @@ const double b = 0.0; /* Linear kernel coefficient in the k(X,Y) + b model */
 
 int main(int argc, char * argv[])
 {
+    typedef float algorithmFPType;
     checkArguments(argc, argv, 1, &leftDatasetFileName);
     checkArguments(argc, argv, 1, &rightDatasetFileName);
-
+    
     /* Initialize FileDataSource<CSVFeatureManager> to retrieve the input data from a .csv file */
     FileDataSource<CSVFeatureManager> leftDataSource(leftDatasetFileName, DataSource::doAllocateNumericTable, DataSource::doDictionaryFromContext);
 
     FileDataSource<CSVFeatureManager> rightDataSource(rightDatasetFileName, DataSource::doAllocateNumericTable, DataSource::doDictionaryFromContext);
-
+    
     /* Retrieve the data from the input file */
     leftDataSource.loadDataBlock();
     rightDataSource.loadDataBlock();
-
+    
     /* Create algorithm objects for the kernel algorithm using the default method */
-    kernel_function::linear::Batch<> algorithm;
+    kernel_function::linear::Batch<algorithmFPType> algorithm;
 
     /* Set the kernel algorithm parameter */
     algorithm.parameter.k               = k;
     algorithm.parameter.b               = b;
     algorithm.parameter.computationMode = kernel_function::matrixMatrix;
-
-    /* Set an input data table for the algorithm */
-    algorithm.input.set(kernel_function::X, leftDataSource.getNumericTable());
-    algorithm.input.set(kernel_function::Y, rightDataSource.getNumericTable());
-
-    /* Compute the linear kernel function */
-    algorithm.compute();
-
-    /* Get the computed results */
-    kernel_function::ResultPtr result = algorithm.getResult();
-
-    /* Print the results */
-    printNumericTable(result->get(kernel_function::values), "Values");
-
+    
+    DAAL_CHECK_STATUS_VAR((process_data_for_kernel_func<algorithmFPType, kernel_function::linear::Batch<algorithmFPType> >(algorithm, leftDataSource, rightDataSource)));
     return 0;
 }
